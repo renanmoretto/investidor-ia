@@ -1,0 +1,10 @@
+line-length = 120
+exclude = [
+    "templates",
+    "templates/*",
+    "templates/**",
+]
+
+[format]
+exclude = ["templates","*.html"]
+quote-style = "single"
