@@ -24,7 +24,7 @@ def get_company_data(ticker: str) -> dict:
     for result in r_json['results']:
         if result['issuingCompany'] == ticker[:4]:
             company_data = result
-            print(f'Ticker encontrado: {company_data["companyName"]}')
+            # print(f'ticker encontrado: {company_data["companyName"]}')
             break
     else:
         raise ValueError(f'Ticker {ticker} not found')

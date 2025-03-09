@@ -4,19 +4,24 @@ import datetime
 from bs4 import BeautifulSoup
 
 
-URL = "https://fundamentus.com.br"
+URL = 'https://fundamentus.com.br'
 
 
-def stock_details(ticker: str) -> dict:
-    url = f"{URL}/detalhes.php?papel={ticker}"
+def _request(url: str) -> requests.Response:
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
     response = requests.get(url, headers=headers)
     response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    return response
+
+
+def stock_details(ticker: str) -> dict:
+    response = _request(f'{URL}/detalhes.php?papel={ticker}')
+
+    soup = BeautifulSoup(response.text, 'html.parser')
     labels = [label.find('span', class_='txt').text for label in soup.find_all('td', class_='label')]
 
     data = {}
@@ -27,25 +32,66 @@ def stock_details(ticker: str) -> dict:
         dict_key = label.lower().replace(' ', '_').replace('/', '_').replace('.', '').replace('í', 'i')
         data[dict_key] = value
 
+    # values to float
+    for k, v in data.items():
+        try:
+            # Skip if string contains 2 or more letters (real string value)
+            letter_count = sum(c.isalpha() for c in v)
+            if letter_count > 2:
+                continue
+                
+            v = v.replace('.', '').replace(',', '.').replace(' ', '').replace('M', '')
+            if '%' in v:
+                v = float(v.replace('%', '')) / 100
+            else:
+                v = float(v)
+            data[k] = round(v, 4)
+        except:
+            pass
+
+    return data
+
+
+def stock_dividends(ticker: str) -> list[dict]:
+    response = _request(f'{URL}/proventos.php?papel={ticker}')
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    tables = soup.find_all('table')
+    table = tables[0]
+
+    data = []
+    for r in table.find_all('tr')[1:]:
+        _tds = r.find_all('td')
+        try:
+            data.append(
+                {
+                    'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y')
+                    .date()
+                    .isoformat(),
+                    'data_pagamento': datetime.datetime.strptime(
+                        _tds[3].text.replace('\t', '').replace(' ', ''), '%d/%m/%Y'
+                    )
+                    .date()
+                    .isoformat(),
+                    'valor': float(_tds[1].text.replace('.', '').replace(',', '.').replace(' ', '')),
+                }
+            )
+        except Exception as _:
+            pass
+
     return data
 
 
 def stock_releases(ticker: str) -> list[dict]:
-    url = f"{URL}/apresentacoes.php?papel={ticker}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
-
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
-    tables = soup.find_all("table")
+    tables = soup.find_all('table')
     table = tables[0]
 
     data = []
-    for r in table.find_all("tr")[1:]:
-        _tds = r.find_all("td")
+    for r in table.find_all('tr')[1:]:
+        _tds = r.find_all('td')
         data.append(
             {
                 'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y %H:%M').isoformat(),
