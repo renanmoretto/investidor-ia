@@ -29,8 +29,14 @@ def _transform_data(data: dict) -> list[dict]:
                     value = float(cleaned_v) / 100
                 else:
                     # Handle monetary values with M suffix
-                    cleaned_v = cleaned_v.replace('M', '')
-                    value = float(cleaned_v) * 1_000_000
+                    if 'M' in v:
+                        mult = 1_000_000
+                    elif 'B' in v:
+                        mult = 1_000_000_000
+                    else:
+                        mult = 1
+                    cleaned_v = cleaned_v.replace('M', '').replace('B', '')
+                    value = float(cleaned_v) * mult
 
             if 'Últ. 12M' in k:
                 k = 'ltm'
@@ -92,3 +98,28 @@ def screener() -> list[dict]:
     r = requests.get(url, headers=headers)
     r_json = r.json()
     return r_json['list']
+
+
+def indicator_history(ticker: str) -> dict:
+    url = 'https://statusinvest.com.br/acao/indicatorhistoricallist'
+    data = {'codes[]': ticker.lower(), 'time': 5, 'byQuarter': False, 'futureData': False}
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    }
+
+    r = requests.post(url, data=data, headers=headers)
+    r_json = r.json()
+
+    data = {}
+    for ind_data in r_json['data'][ticker.lower()]:
+        name = ind_data['key']
+        hist_data = {}
+        for item in ind_data['ranks']:
+            v = item.get('value')
+            if v is None:
+                continue
+            hist_data[item['rank']] = v
+        data[name] = hist_data
+
+    return data
