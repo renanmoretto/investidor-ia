@@ -34,8 +34,7 @@ _*.ipynb
 # pastas vazias
 db/*
 !db/.gitkeep
-tmp/*
-!tmp/.gitkeep
+tmp/
 logs/*
 !logs/.gitkeep
 
