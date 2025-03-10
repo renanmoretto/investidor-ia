@@ -3,6 +3,7 @@ import base64
 import io
 import datetime
 import os
+import asyncio
 from typing import Literal, Any
 
 import requests
@@ -25,6 +26,7 @@ from src.agents.analysts import (
     financial_analyst,
     valuation_analyst,
     news_analyst,
+    technical_analyst,
 )
 from src.agents.investors import graham
 from src.llm import ask
@@ -35,11 +37,6 @@ def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
     _data = [d for d in data if name in d['index']][0]
     values = list(_data.values())[1:][::-1][-length:]
     return round((values[-1] / values[0]) ** (1 / (len(values) - 1)) - 1, 4)
-
-
-def print_result():
-    # TODO
-    pass
 
 
 async def investor_analyze(
@@ -150,7 +147,7 @@ async def investor_analyze(
     )
 
     # investor analysis
-    print('Juntando análises e gerando resposta final...')
+    print('Gerando resposta final...')
     if investor_name == 'buffett':
         pass
     elif investor_name == 'graham':
@@ -202,5 +199,71 @@ async def investor_analyze(
     }
 
 
+def print_result(analysis: dict, investor_name: str):
+    console = Console()
+
+    sentiment_color = {'BULLISH': 'green', 'BEARISH': 'red', 'NEUTRAL': 'yellow'}
+
+    _table_data = [
+        {
+            'Análise': 'Release',
+            'Sentimento': analysis['analysts']['earnings_release_analyst'].sentiment,
+            'Confiança': f'{analysis["analysts"]["earnings_release_analyst"].confidence}%',
+        },
+        {
+            'Análise': 'Financeira',
+            'Sentimento': analysis['analysts']['financial_analyst'].sentiment,
+            'Confiança': f'{analysis["analysts"]["financial_analyst"].confidence}%',
+        },
+        {
+            'Análise': 'Valuation',
+            'Sentimento': analysis['analysts']['valuation_analyst'].sentiment,
+            'Confiança': f'{analysis["analysts"]["valuation_analyst"].confidence}%',
+        },
+        {
+            'Análise': 'Notícias',
+            'Sentimento': analysis['analysts']['news_analyst'].sentiment,
+            'Confiança': f'{analysis["analysts"]["news_analyst"].confidence}%',
+        },
+    ]
+
+    table = Table(title='Analistas')
+    table.add_column('Análise')
+    table.add_column('Sentimento', justify='center')
+    table.add_column('Confiança', justify='center')
+
+    for row in _table_data:
+        sentiment = row['Sentimento']
+
+        table.add_row(row['Análise'], f'[{sentiment_color[sentiment]}]{sentiment}[/]', row['Confiança'])
+
+    console.print('')
+    console.print('')
+    console.print(table)
+    console.print('')
+    console.print('')
+    # output investor analysis
+    console.print(f'Análise de {investor_name.capitalize()}')
+    console.print('Sentimento: ', style='bold', end='')
+    console.print(analysis['investor'].sentiment, style=sentiment_color[analysis['investor'].sentiment])
+    console.print('Confiança: ', style='bold', end='')
+    console.print(f'{analysis["investor"].confidence}%')
+    console.print(Markdown(analysis['investor'].content))
+
+
 if __name__ == '__main__':
-    pass
+    ticker = input('Ticker: ')
+    print('\nEscolha o investidor:')
+    print('1 - Graham')
+    print('2 - Buffett')
+
+    investor_choice = input('\nOpção: ')
+    investor_map = {'1': 'graham', '2': 'buffett'}
+
+    investor_name = investor_map.get(investor_choice)
+    if not investor_name:
+        print('Opção inválida!')
+        exit(1)
+
+    analysis = asyncio.run(investor_analyze(ticker, investor_name))
+    print_result(analysis, investor_name)
