@@ -39,7 +39,7 @@ def stock_details(ticker: str) -> dict:
             letter_count = sum(c.isalpha() for c in v)
             if letter_count > 2:
                 continue
-                
+
             v = v.replace('.', '').replace(',', '.').replace(' ', '').replace('M', '')
             if '%' in v:
                 v = float(v.replace('%', '')) / 100
@@ -57,6 +57,9 @@ def stock_dividends(ticker: str) -> list[dict]:
 
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
+    if not tables:
+        return []
+
     table = tables[0]
 
     data = []
