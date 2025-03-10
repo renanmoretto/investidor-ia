@@ -20,10 +20,15 @@ from rich.pretty import pprint
 from rich.table import Table
 
 from src import b3, fundamentus, statusinvest
-from src.agents.analysts import earnings_release_analyst, financial_analyst, valuation_analyst
+from src.agents.analysts import (
+    earnings_release_analyst,
+    financial_analyst,
+    valuation_analyst,
+    news_analyst,
+)
 from src.agents.investors import graham
 from src.llm import ask
-from src.agents._base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput
 
 
 def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
@@ -37,7 +42,7 @@ def print_result():
     pass
 
 
-def investor_analysis(
+async def investor_analyze(
     ticker: str,
     investor_name: str,
 ):
@@ -46,7 +51,9 @@ def investor_analysis(
     year_end = today.year
 
     # get all data
+    print(f'Coletando dados da empresa {ticker}...')
     b3_details = b3.get_company_data(ticker)
+    company_name = b3_details.get('companyName', 'nan')
     stock_details = fundamentus.stock_details(ticker)
     stock_releases = fundamentus.stock_releases(ticker)
     dre_quarter = statusinvest.dre(ticker, year_start, year_end, 'quarter')
@@ -101,10 +108,17 @@ def investor_analysis(
     )
 
     # ai analysts
-    earnings_release_analysis = earnings_release_analyst.analyze(release_pdf_bytes)
-    financial_analysis = financial_analyst.analyze(
+    print('Analisando earnings release...')
+    earnings_release_analysis = await earnings_release_analyst.analyze(
         ticker=ticker,
-        company_name=b3_details.get('companyName', 'nan'),
+        company_name=company_name,
+        earnings_release_pdf_bytes=release_pdf_bytes,
+    )
+
+    print('Analisando dados financeiros...')
+    financial_analysis = await financial_analyst.analyze(
+        ticker=ticker,
+        company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
         dre_quarter=pd.DataFrame(dre_quarter).set_index('index').to_dict(),
         cash_flow_quarter=pd.DataFrame(cash_flow_quarter).set_index('index').to_dict(),
@@ -115,9 +129,11 @@ def investor_analysis(
         dividends_by_year=dividends_by_year,
         dividends_growth=dividends_growth,
     )
-    valuation_analysis = valuation_analyst.analyze(
+
+    print('Analisando valuation...')
+    valuation_analysis = await valuation_analyst.analyze(
         ticker=ticker,
-        company_name=b3_details.get('companyName', 'nan'),
+        company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
         current_price=stock_details.get('price', float('nan')),
         current_multiples=stock_multiples.to_dicts()[0],
@@ -127,8 +143,17 @@ def investor_analysis(
         market_multiples_median=market_multiples_median.to_dicts()[0],
     )
 
+    print('Analisando notícias...')
+    news_analysis = await news_analyst.analyze(
+        ticker=ticker,
+        company_name=company_name,
+    )
+
     # investor analysis
-    if investor_name == 'graham':
+    print('Juntando análises e gerando resposta final...')
+    if investor_name == 'buffett':
+        pass
+    elif investor_name == 'graham':
         classic_criteria = {
             'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
             'preco_sobre_lucro': stock_details.get('p_l', float('nan')),
@@ -151,20 +176,30 @@ def investor_analysis(
             .with_columns(v=pl.col('ativo_circulante') / pl.col('passivo_circulante'))['v']
             .round(4)[0],
         }
-        investor_analysis = graham.analyze(
+        investor_analysis = await graham.analyze(
             ticker=ticker,
-            company_name=b3_details.get('companyName', 'nan'),
+            company_name=company_name,
             segment=b3_details.get('segment', 'nan'),
             earnings_release_analysis=earnings_release_analysis,
             financial_analysis=financial_analysis,
             valuation_analysis=valuation_analysis,
+            news_analysis=news_analysis,
             dre_year=dre_year,
             classic_criteria=classic_criteria,
         )
+
     else:
         raise ValueError(f'Investor {investor_name} not found')
 
-    return investor_analysis
+    return {
+        'analysts': {
+            'earnings_release_analyst': earnings_release_analysis,
+            'financial_analyst': financial_analysis,
+            'valuation_analyst': valuation_analysis,
+            'news_analyst': news_analysis,
+        },
+        'investor': investor_analysis,
+    }
 
 
 if __name__ == '__main__':
