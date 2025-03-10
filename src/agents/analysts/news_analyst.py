@@ -60,16 +60,23 @@ agent = Agent(
     tools=[duckduckgo_search_tool()],
     system_prompt=_system_prompt,
     result_type=BaseAgentOutput,
-    retries=1,
+    retries=3,
 )
 
 
 def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
-    async def _analyze():
-        r = await agent.run(f'Pesquise notícias sobre a empresa {company_name} ({ticker}).')
-        return r.data
+    def sync_run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(agent.run(f'Pesquise notícias sobre a empresa {company_name} ({ticker}).'))
+            return result.data
+        except Exception:
+            return BaseAgentOutput(content='Erro ao buscar notícias sobre a empresa', sentiment='NEUTRAL', confidence=0)
+        finally:
+            loop.close()
 
-    if asyncio.get_event_loop().is_running():
-        return asyncio.ensure_future(_analyze())
-    else:
-        return asyncio.run(_analyze())
+    try:
+        return sync_run()
+    except Exception:
+        return BaseAgentOutput(content='Erro ao buscar notícias sobre a empresa', sentiment='NEUTRAL', confidence=0)

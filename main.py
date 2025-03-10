@@ -21,6 +21,7 @@ from rich.pretty import pprint
 from rich.table import Table
 
 from src import b3, fundamentus, statusinvest
+from src.utils import pdf_bytes_to_text
 from src.agents.analysts import (
     earnings_release_analyst,
     financial_analyst,
@@ -28,7 +29,7 @@ from src.agents.analysts import (
     news_analyst,
     technical_analyst,
 )
-from src.agents.investors import graham
+from src.agents.investors import graham, buffett
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
 
@@ -36,7 +37,15 @@ from src.agents.base import BaseAgentOutput
 def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
     _data = [d for d in data if name in d['index']][0]
     values = list(_data.values())[1:][::-1][-length:]
-    return round((values[-1] / values[0]) ** (1 / (len(values) - 1)) - 1, 4)
+    if values[-1] < 0 or values[0] < 0:
+        # If either value is negative, use absolute values and multiply by -1 if end value is negative
+        cagr = round((abs(values[-1]) / abs(values[0])) ** (1 / (len(values) - 1)) - 1, 4)
+        if values[-1] < 0:
+            cagr = -cagr
+    else:
+        cagr = round((values[-1] / values[0]) ** (1 / (len(values) - 1)) - 1, 4)
+
+    return cagr
 
 
 async def investor_analyze(
@@ -63,24 +72,30 @@ async def investor_analyze(
     dividends = fundamentus.stock_dividends(ticker)
     cagr_5y_receita_liq = _calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = _calc_cagr(dre_year, 'lucro_liquido', 5)
-    dividends_by_year = (
-        pl.DataFrame(dividends)
-        .with_columns(year=pl.col('data_pagamento').str.slice(0, 4).cast(pl.Int64))
-        .group_by('year')
-        .agg(pl.col('valor').sum().round(4))
-        .sort('year')
-        .to_dicts()
-    )
-    dividends_growth = (
-        pl.DataFrame(dividends_by_year)
-        .with_columns(valor=pl.col('valor').pct_change().round(4))
-        .drop_nulls()
-        .to_dicts()
-    )
+
+    if dividends:
+        dividends_by_year = (
+            pl.DataFrame(dividends)
+            .with_columns(year=pl.col('data_pagamento').str.slice(0, 4).cast(pl.Int64))
+            .group_by('year')
+            .agg(pl.col('valor').sum().round(4))
+            .sort('year')
+            .to_dicts()
+        )
+        dividends_growth = (
+            pl.DataFrame(dividends_by_year)
+            .with_columns(valor=pl.col('valor').pct_change().round(4))
+            .drop_nulls()
+            .to_dicts()
+        )
+    else:
+        dividends_by_year = []
+        dividends_growth = []
 
     release_link = stock_releases[0]['download_link']
     r = requests.get(release_link)
-    release_pdf_bytes = r.content
+    earnings_release_pdf_bytes = r.content
+    earnings_release_text = pdf_bytes_to_text(earnings_release_pdf_bytes)[:50000]
 
     # status invest screener
     screener_statusinvest_df = (
@@ -106,14 +121,15 @@ async def investor_analyze(
 
     # ai analysts
     print('Analisando earnings release...')
-    earnings_release_analysis = await earnings_release_analyst.analyze(
-        ticker=ticker,
-        company_name=company_name,
-        earnings_release_pdf_bytes=release_pdf_bytes,
-    )
+    # earnings_release_analysis = earnings_release_analyst.analyze(
+    #     ticker=ticker,
+    #     company_name=company_name,
+    #     earnings_release_text=earnings_release_text,
+    # )
+    earnings_release_analysis = earnings_release_analyst.analyze(release_pdf_bytes=earnings_release_pdf_bytes)
 
     print('Analisando dados financeiros...')
-    financial_analysis = await financial_analyst.analyze(
+    financial_analysis = financial_analyst.analyze(
         ticker=ticker,
         company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
@@ -128,7 +144,7 @@ async def investor_analyze(
     )
 
     print('Analisando valuation...')
-    valuation_analysis = await valuation_analyst.analyze(
+    valuation_analysis = valuation_analyst.analyze(
         ticker=ticker,
         company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
@@ -141,7 +157,7 @@ async def investor_analyze(
     )
 
     print('Analisando notícias...')
-    news_analysis = await news_analyst.analyze(
+    news_analysis = news_analyst.analyze(
         ticker=ticker,
         company_name=company_name,
     )
@@ -149,7 +165,21 @@ async def investor_analyze(
     # investor analysis
     print('Gerando resposta final...')
     if investor_name == 'buffett':
-        pass
+        investor_analysis = buffett.analyze(
+            ticker=ticker,
+            company_name=company_name,
+            segment=b3_details.get('segment', 'nan'),
+            earnings_release_analysis=earnings_release_analysis,
+            financial_analysis=financial_analysis,
+            valuation_analysis=valuation_analysis,
+            news_analysis=news_analysis,
+            dre_year=dre_year,
+            preco_sobre_lucro=stock_details.get('p_l', float('nan')),
+            preco_sobre_valor_patrimonial=stock_details.get('p_vp', float('nan')),
+            crescimento_dividendos_anuais=dividends_growth,
+            cagr_5y_receita_liq=cagr_5y_receita_liq,
+            cagr_5y_lucro_liq=cagr_5y_lucro_liq,
+        )
     elif investor_name == 'graham':
         classic_criteria = {
             'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',

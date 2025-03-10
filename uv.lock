@@ -524,6 +524,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "nest-asyncio" },
 ]
 
 [package.metadata]
@@ -545,7 +546,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ipykernel", specifier = ">=6.29.5" }]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
+]
 
 [[package]]
 name = "ipykernel"

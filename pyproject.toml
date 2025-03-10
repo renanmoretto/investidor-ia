@@ -24,4 +24,5 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
+    "nest-asyncio>=1.6.0",
 ]
