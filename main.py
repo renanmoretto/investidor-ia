@@ -29,7 +29,12 @@ from src.agents.analysts import (
     news_analyst,
     technical_analyst,
 )
-from src.agents.investors import graham, buffett
+from src.agents.investors import (
+    graham,
+    buffett,
+    lynch,
+    barsi,
+)
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
 
@@ -69,6 +74,7 @@ async def investor_analyze(
     balance_sheet_year = statusinvest.balance_sheet(ticker, year_start, year_end, 'year')
     balance_sheet_quarter = statusinvest.balance_sheet(ticker, year_start, year_end, 'quarter')
     screener_statusinvest = statusinvest.screener()
+    historical_multiples = statusinvest.indicator_history(ticker)
     dividends = fundamentus.stock_dividends(ticker)
     cagr_5y_receita_liq = _calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = _calc_cagr(dre_year, 'lucro_liquido', 5)
@@ -150,14 +156,14 @@ async def investor_analyze(
         segment=b3_details.get('segment', 'nan'),
         current_price=stock_details.get('price', float('nan')),
         current_multiples=stock_multiples.to_dicts()[0],
-        historical_multiples=stock_multiples.to_dicts()[0],
+        historical_multiples=historical_multiples,
         sector_multiples_mean=segment_means.to_dicts()[0],
         sector_multiples_median=segment_medians.to_dicts()[0],
         market_multiples_median=market_multiples_median.to_dicts()[0],
     )
 
     print('Analisando notícias...')
-    news_analysis = news_analyst.analyze(
+    news_analysis = await news_analyst.analyze(
         ticker=ticker,
         company_name=company_name,
     )
@@ -180,6 +186,7 @@ async def investor_analyze(
             cagr_5y_receita_liq=cagr_5y_receita_liq,
             cagr_5y_lucro_liq=cagr_5y_lucro_liq,
         )
+
     elif investor_name == 'graham':
         classic_criteria = {
             'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
@@ -213,6 +220,29 @@ async def investor_analyze(
             news_analysis=news_analysis,
             dre_year=dre_year,
             classic_criteria=classic_criteria,
+        )
+
+    elif investor_name == 'lynch':
+        raise NotImplementedError('Peter Lynch analysis not implemented yet')
+
+    elif investor_name == 'barsi':
+        investor_analysis = barsi.analyze(
+            ticker=ticker,
+            company_name=company_name,
+            segment=b3_details.get('segment', 'nan'),
+            earnings_release_analysis=earnings_release_analysis,
+            financial_analysis=financial_analysis,
+            valuation_analysis=valuation_analysis,
+            news_analysis=news_analysis,
+            dre_year=dre_year,
+            preco_sobre_lucro=stock_details.get('p_l', float('nan')),
+            preco_sobre_valor_patrimonial=stock_details.get('p_vp', float('nan')),
+            crescimento_dividendos_anuais=dividends_growth,
+            cagr_5y_receita_liq=cagr_5y_receita_liq,
+            cagr_5y_lucro_liq=cagr_5y_lucro_liq,
+            dividend_history=dividends_by_year,
+            dividend_yield=list(historical_multiples['dy'].values())[0],
+            dividend_yield_per_year=historical_multiples['dy'],
         )
 
     else:
@@ -284,11 +314,18 @@ def print_result(analysis: dict, investor_name: str):
 if __name__ == '__main__':
     ticker = input('Ticker: ')
     print('\nEscolha o investidor:')
-    print('1 - Graham')
-    print('2 - Buffett')
+    print('1 - Warren Buffett')
+    print('2 - Benjamin Graham')
+    print('3 - Peter Lynch')
+    print('4 - Luiz Barsi')
 
     investor_choice = input('\nOpção: ')
-    investor_map = {'1': 'graham', '2': 'buffett'}
+    investor_map = {
+        '1': 'buffett',
+        '2': 'graham',
+        '3': 'lynch',
+        '4': 'barsi',
+    }
 
     investor_name = investor_map.get(investor_choice)
     if not investor_name:

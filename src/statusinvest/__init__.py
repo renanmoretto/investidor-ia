@@ -29,13 +29,15 @@ def _transform_data(data: dict) -> list[dict]:
                     value = float(cleaned_v) / 100
                 else:
                     # Handle monetary values with M suffix
-                    if 'M' in v:
+                    if 'K' in v:
+                        mult = 1_000
+                    elif 'M' in v:
                         mult = 1_000_000
                     elif 'B' in v:
                         mult = 1_000_000_000
                     else:
                         mult = 1
-                    cleaned_v = cleaned_v.replace('M', '').replace('B', '')
+                    cleaned_v = cleaned_v.replace('K', '').replace('M', '').replace('B', '')
                     value = float(cleaned_v) * mult
 
             if 'Últ. 12M' in k:

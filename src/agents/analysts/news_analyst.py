@@ -64,19 +64,9 @@ agent = Agent(
 )
 
 
-def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
-    def sync_run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(agent.run(f'Pesquise notícias sobre a empresa {company_name} ({ticker}).'))
-            return result.data
-        except Exception:
-            return BaseAgentOutput(content='Erro ao buscar notícias sobre a empresa', sentiment='NEUTRAL', confidence=0)
-        finally:
-            loop.close()
-
+async def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
     try:
-        return sync_run()
+        result = await agent.run(f'Pesquise notícias sobre a empresa {company_name} ({ticker}).')
+        return result.data
     except Exception:
         return BaseAgentOutput(content='Erro ao buscar notícias sobre a empresa', sentiment='NEUTRAL', confidence=0)

@@ -108,10 +108,15 @@ def analyze(
     }}
     """
 
-    response = ask(
-        message=prompt,
-        model='gemini-2.0-flash',
-        temperature=0.3,
-        model_output=BaseAgentOutput,
-    )
-    return response
+    try:
+        response = ask(
+            message=prompt,
+            model='gemini-2.0-flash',
+            temperature=0.3,
+            model_output=BaseAgentOutput,
+            retries=3,
+        )
+        return response
+    except Exception as e:
+        print(f'Erro ao gerar análise.: {e}')
+        return BaseAgentOutput(content='Erro ao gerar análise.', sentiment='NEUTRAL', confidence=0)

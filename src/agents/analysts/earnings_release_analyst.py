@@ -54,11 +54,16 @@ def analyze(release_pdf_bytes: bytes) -> BaseAgentOutput:
     }}
     """
 
-    response = ask(
-        message=prompt,
-        model='gemini-1.5-flash-8b',
-        temperature=0.3,
-        pdf_content=release_pdf_bytes,
-        model_output=BaseAgentOutput,
-    )
-    return response
+    try:
+        response = ask(
+            message=prompt,
+            model='gemini-1.5-flash-8b',
+            temperature=0.3,
+            pdf_content=release_pdf_bytes,
+            model_output=BaseAgentOutput,
+            retries=3,
+        )
+        return response
+    except Exception as e:
+        print(f'Erro ao analisar o earnings release: {e}')
+        return BaseAgentOutput(content='Erro ao analisar o earnings release', sentiment='NEUTRAL', confidence=0)
