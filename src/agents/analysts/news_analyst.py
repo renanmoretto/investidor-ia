@@ -53,34 +53,9 @@ def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
     4. Monitorar riscos e oportunidades mencionados nas notícias
     5. Acompanhar declarações importantes da administração
 
-    ## ESTRUTURA DO SEU RESUMO
-    Organize sua resposta em formato markdown seguindo esta estrutura:
-
-    ### 1. PRINCIPAIS MANCHETES
-    - Liste as 3-5 notícias mais impactantes encontradas
-    - Inclua a data e fonte de cada notícia
-
-    ### 2. EVENTOS CORPORATIVOS
-    - Mudanças na administração
-    - Fusões, aquisições ou desinvestimentos
-    - Novos projetos ou investimentos significativos
-
-    ### 3. DESEMPENHO E MERCADO
-    - Notícias sobre resultados financeiros
-    - Análises de mercado e recomendações de analistas
-    - Mudanças no setor que afetam a empresa
-
-    ### 4. RISCOS E CONTROVÉRSIAS
-    - Processos judiciais relevantes
-    - Investigações ou denúncias
-    - Riscos regulatórios ou setoriais
-
-    ### 5. CONCLUSÃO
-    - Avaliação do sentimento geral das notícias
-    - Impacto potencial no curto e médio prazo
+    No final, você deve fornecer uma síntese objetiva em 3-5 frases sobre o sentimento geral das notícias e o impacto potencial no curto e médio prazo.
 
     ## DIRETRIZES IMPORTANTES
-    - Priorize fontes confiáveis e especializadas
     - Mantenha objetividade na análise
     - Destaque fatos concretos, não especulações
     - Indique claramente a temporalidade das notícias
@@ -89,10 +64,12 @@ def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
     ## FORMATO FINAL (IMPORTANTE)
     Você deve estruturar a sua resposta em um JSON com a seguinte estrutura:
     {{
-        'content': 'Conteúdo markdown inteiro da sua análise',
-        'sentiment': 'Seu sentimento sobre a análise, você deve escolher entre "BULLISH", "BEARISH", "NEUTRAL"',
-        'confidence': 'um valor entre 0 e 100, que representa sua confiança na análise',
+        "content": "Conteúdo markdown inteiro da sua análise",
+        "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
+        "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
+
+    ---
 
     Dado o contexto, analise as notícias abaixo.
     Se a lista estiver vazia ou se as notícias não forem condinzentes com a empresa e o contexto, você deve retornar um content vazio, sentiment NEUTRAL, com confidence 0.

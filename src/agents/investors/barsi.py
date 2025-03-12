@@ -71,10 +71,10 @@ def analyze(
     - Existem mudanças regulatórias ou setoriais que podem afetar a capacidade de pagamento?  
     - A empresa pode manter sua posição competitiva no longo prazo?  
 
-    ### **6. CONCLUSÃO FINAL**  
-    - **COMPRAR, NÃO COMPRAR ou OBSERVAR?**  
-    - Justificativa clara baseada na sua filosofia de investimento em dividendos.  
-    - Potencial de geração de renda passiva no longo prazo.  
+    ### Seção de "CONCLUSÃO"
+    - Decisão clara: COMPRAR, NÃO COMPRAR ou OBSERVAR
+    - Justificativa baseada estritamente em seus princípios de investimento
+    - Condições que poderiam mudar sua análise no futuro
 
     ---
 
@@ -90,9 +90,9 @@ def analyze(
     ## FORMATO FINAL (**IMPORTANTE**)
     Você deve estruturar a sua resposta em um JSON com a seguinte estrutura:
     {{
-        'content': 'Conteúdo markdown inteiro da sua análise',
-        'sentiment': 'Seu sentimento sobre a análise, você deve escolher entre "BULLISH", "BEARISH", "NEUTRAL"',
-        'confidence': 'um valor entre 0 e 100, que representa sua confiança na análise',
+        "content": "Conteúdo markdown inteiro da sua análise",
+        "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
+        "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
 
     ---

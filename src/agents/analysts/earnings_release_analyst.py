@@ -17,7 +17,7 @@ def analyze(release_pdf_bytes: bytes) -> BaseAgentOutput:
     - Liste os 3-5 pontos mais importantes que a própria empresa destacou no relatório
     - Mantenha-se fiel ao que foi explicitamente mencionado no documento
 
-    ### 2. MENSAGEM DA ADMINISTRAÇÃO
+    ### 2. MENSAGEM DA ADMINISTRAÇÃO (se houver)
     - Resuma as principais declarações da liderança da empresa
     - Extraia citações relevantes sobre a visão da administração sobre os resultados
 
@@ -48,9 +48,9 @@ def analyze(release_pdf_bytes: bytes) -> BaseAgentOutput:
     Seu conteúdo deve ser conciso (máximo de 800 palavras), focando apenas nos pontos mais relevantes mencionados no documento.
     (IMPORTANTE) Você deve estruturar a sua resposta em um JSON com a seguinte estrutura:
     {{
-        'content': 'Conteúdo markdown inteiro da sua análise',
-        'sentiment': 'Seu sentimento sobre a análise, você deve escolher entre "BULLISH", "BEARISH", "NEUTRAL"',
-        'confidence': 'um valor entre 0 e 100, que representa sua confiança na análise',
+        "content": "Conteúdo markdown inteiro da sua análise",
+        "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
+        "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
     """
 

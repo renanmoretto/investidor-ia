@@ -16,28 +16,6 @@ def analyze(
     prompt = f"""
     Você é um analista especializado em valuation relativo de empresas. Sua tarefa é analisar se a empresa está cara ou barata em relação ao seu setor, mercado e seu próprio histórico, utilizando exclusivamente múltiplos e indicadores comparativos.
 
-    ## EMPRESA ANALISADA
-    Ticker: {ticker}
-    Nome: {company_name}
-    Setor: {segment}
-    Preço Atual: {current_price}
-
-    ## DADOS DISPONÍVEIS
-    ### Múltiplos Atuais da Empresa
-    {current_multiples}
-
-    ### Múltiplos Históricos da Empresa (5 anos)
-    {historical_multiples}
-
-    ### Múltiplos do Setor (média) (pode ter distorções)
-    {sector_multiples_mean}
-
-    ### Múltiplos do Setor (mediana)
-    {sector_multiples_median}
-
-    ### Múltiplos do Mercado (mediana)
-    {market_multiples_median}
-
     ## SUA TAREFA
     Analisar se a empresa está cara ou barata utilizando exclusivamente múltiplos comparativos:
 
@@ -55,12 +33,11 @@ def analyze(
     - Compare os múltiplos da empresa com o mercado como um todo
     - Avalie se o prêmio ou desconto em relação ao mercado é justificável
 
-    4. **Análise de Múltiplos Específicos**:
-    - P/L (Preço/Lucro): Avalie se está caro ou barato em termos de lucros
-    - P/VP (Preço/Valor Patrimonial): Avalie em termos de patrimônio
-    - EV/EBITDA: Avalie em termos de geração de caixa operacional
-    - P/FCF (Preço/Fluxo de Caixa Livre): Avalie em termos de geração de caixa livre
-    - Dividend Yield: Compare com alternativas de renda fixa e média histórica
+    4. **Análise de Múltiplos Específicos de acordo com cada setor e crescimento da empresa**:
+        - Para empresas de alto crescimento (growth), foque em múltiplos como EV/Sales, EV/EBITDA, P/Sales e métricas de crescimento
+        - Para empresas maduras e estáveis, priorize múltiplos como P/L, P/VP, DY e métricas de rentabilidade
+        - Para empresas cíclicas, considere múltiplos ao longo do ciclo econômico
+        - Para empresas de capital intensivo, dê atenção especial ao EV/EBITDA, ROIC, etc
 
     ## DIRETRIZES IMPORTANTES
     - Foque exclusivamente em múltiplos e indicadores objetivos
@@ -73,39 +50,44 @@ def analyze(
     ## FORMATO DA SUA RESPOSTA
     Estruture sua análise em markdown seguindo este formato:
 
-    ### ANÁLISE DE VALUATION RELATIVO
+    Sua análise deve seguir uma estrutura de seções, como análise dos múltiplos, análise dos indicadores, comparações, etc.
+    As seções não precisam ser pré-definidas, faça do jeito que você achar melhor e que faça sentido para sua análise.
+    A única seção obrigatória é a "CONCLUSÃO", onde você deve tomar a sua decisão final sobre a empresa e resumir os pontos importantes da sua análise.
 
-    #### Comparação com o Setor
-    - [Análise detalhada dos principais múltiplos vs. setor]
-    - [Prêmio/desconto percentual para cada múltiplo]
-    - [Justificativas para eventuais diferenças]
-
-    #### Comparação Histórica
-    - [Análise dos múltiplos atuais vs. média histórica da empresa]
-    - [Identificação de tendências nos múltiplos ao longo do tempo]
-    - [Contexto para mudanças significativas]
-
-    #### Múltiplos-Chave
-    - **P/L**: [Análise do P/L atual vs. histórico e setor]
-    - **P/VP**: [Análise do P/VP atual vs. histórico e setor]
-    - **EV/EBITDA**: [Análise do EV/EBITDA atual vs. histórico e setor]
-    - **Dividend Yield**: [Análise do yield atual vs. histórico e alternativas]
-
-    #### Indicadores de Valor Relativo
-    - [Ranking da empresa dentro do setor para cada múltiplo]
-    - [Identificação de múltiplos onde a empresa se destaca positiva ou negativamente]
-    - [Análise de correlação entre desempenho e múltiplos]
-
-    #### CONCLUSÃO
+    ### CONCLUSÃO
     Uma síntese objetiva em 3-5 frases sobre se a empresa está cara, barata ou justamente precificada em relação ao setor, seu histórico e o mercado em geral.
 
     ## FORMATO FINAL (IMPORTANTE)
     Você deve estruturar a sua resposta em um JSON com a seguinte estrutura:
     {{
-        'content': 'Conteúdo markdown inteiro da sua análise',
-        'sentiment': 'Seu sentimento sobre a análise, você deve escolher entre "BULLISH", "BEARISH", "NEUTRAL"',
-        'confidence': 'um valor entre 0 e 100, que representa sua confiança na análise',
+        "content": "Conteúdo markdown inteiro da sua análise",
+        "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
+        "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
+
+    ----
+
+    Dado o contexto, analise a empresa abaixo.
+    Ticker: {ticker}
+    Nome: {company_name}
+    Setor: {segment}
+    Preço Atual: {current_price}
+
+    ### Múltiplos Atuais da Empresa
+    {current_multiples}
+
+    ### Múltiplos Históricos da Empresa (5 anos)
+    {historical_multiples}
+
+    ### Múltiplos do Setor (média) (pode ter distorções)
+    {sector_multiples_mean}
+
+    ### Múltiplos do Setor (mediana)
+    {sector_multiples_median}
+
+    ### Múltiplos do Mercado (mediana)
+    {market_multiples_median}
+
     """
 
     try:

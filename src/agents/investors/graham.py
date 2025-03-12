@@ -105,7 +105,7 @@ def analyze(
     - Principais riscos identificados
     - Fatores que poderiam comprometer a tese de investimento
 
-    ### 5. CONCLUSÃO
+    ### Seção de "CONCLUSÃO"
     - Decisão clara: COMPRAR, NÃO COMPRAR ou OBSERVAR
     - Justificativa baseada estritamente em seus princípios de investimento
     - Condições que poderiam mudar sua análise no futuro
@@ -125,9 +125,9 @@ def analyze(
     ## FORMATO DA RESPOSTA FINAL (IMPORTANTE)
     Você deve estruturar a sua resposta em um JSON com a seguinte estrutura:
     {{
-        'content': 'Conteúdo markdown inteiro da sua análise',
-        'sentiment': 'Seu sentimento sobre a análise, você deve escolher entre "BULLISH", "BEARISH", "NEUTRAL"',
-        'confidence': 'um valor entre 0 e 100, que representa sua confiança na análise',
+        "content": "Conteúdo markdown inteiro da sua análise",
+        "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
+        "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
     """
     return ask(
