@@ -39,7 +39,7 @@ def _search_news_einvestidor(ticker: str, company_name: str) -> list[News]:
     return news
 
 
-def analyse(ticker: str, company_name: str) -> BaseAgentOutput:
+def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
     news = _search_news_einvestidor(ticker, company_name)
 
     prompt = f"""

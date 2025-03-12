@@ -36,7 +36,6 @@ from src.agents.investors import (
     barsi,
 )
 from src.llm import ask
-from src.agents.base import BaseAgentOutput
 
 
 def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
@@ -163,7 +162,7 @@ async def investor_analyze(
     )
 
     print('Analisando notícias...')
-    news_analysis = await news_analyst.analyze(
+    news_analysis = news_analyst.analyze(
         ticker=ticker,
         company_name=company_name,
     )
@@ -210,7 +209,7 @@ async def investor_analyze(
             .with_columns(v=pl.col('ativo_circulante') / pl.col('passivo_circulante'))['v']
             .round(4)[0],
         }
-        investor_analysis = await graham.analyze(
+        investor_analysis = graham.analyze(
             ticker=ticker,
             company_name=company_name,
             segment=b3_details.get('segment', 'nan'),
@@ -309,6 +308,25 @@ def print_result(analysis: dict, investor_name: str):
     console.print('Confiança: ', style='bold', end='')
     console.print(f'{analysis["investor"].confidence}%')
     console.print(Markdown(analysis['investor'].content))
+    console.print('')
+    console.print('')
+    # disclaimer
+    console.print('Disclaimer:', style='bold red dim')
+    console.print(
+        'Este relatório foi gerado por um sistema de Inteligência Artificial e NÃO constitui recomendação de investimento.',
+        style='dim',
+    )
+    console.print(
+        'As análises apresentadas são meramente informativas e não devem ser utilizadas como única base para decisões de investimento.',
+        style='dim',
+    )
+    console.print(
+        'Os desenvolvedores e o sistema não se responsabilizam por eventuais perdas ou ganhos decorrentes do uso destas informações.',
+        style='dim',
+    )
+    console.print(
+        'Investimentos em renda variável envolvem riscos e podem resultar em perdas patrimoniais.', style='dim'
+    )
 
 
 if __name__ == '__main__':
