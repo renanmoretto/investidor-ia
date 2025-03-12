@@ -1,0 +1,4 @@
+- duckduckgo proprio
+- streamlit frontend
+- openai/etc
+- analista macroeconomico + mais investidores
