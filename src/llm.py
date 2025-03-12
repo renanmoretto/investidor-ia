@@ -5,8 +5,6 @@ import json
 from google import genai
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from pydantic_ai.models.gemini import GeminiModel
-from pydantic_ai.models.openai import OpenAIModel
 
 
 load_dotenv(override=True)
@@ -74,13 +72,13 @@ def ask(
             continue
 
 
-def get_model():
-    if gemini_api_key:
-        return GeminiModel('gemini-2.0-flash', provider='google-gla')
-    elif openai_api_key:
-        return OpenAIModel('gpt-4o-mini', provider='openai')
-    else:
-        raise ValueError('No API key found')
+# def get_model():
+#     if gemini_api_key:
+#         return GeminiModel('gemini-2.0-flash', provider='google-gla')
+#     elif openai_api_key:
+#         return OpenAIModel('gpt-4o-mini', provider='openai')
+#     else:
+#         raise ValueError('No API key found')
 
 
-model = get_model()
+# model = get_model()

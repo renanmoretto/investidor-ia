@@ -4,64 +4,6 @@ from typing import Any
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
 
-from pydantic_ai import Agent
-
-
-# agent = Agent(
-#     model='google-gla:gemini-2.0-flash',
-#     system_prompt=_system_prompt,
-#     result_type=BaseAgentOutput,
-#     retries=2,
-# )
-
-
-# def analyze(
-#     ticker: str,
-#     company_name: str,
-#     segment: str,
-#     dre_quarter: Any,
-#     cash_flow_quarter: Any,
-#     balance_sheet_quarter: Any,
-#     stock_details: dict,
-#     cagr_5y_receita_liq: float,
-#     cagr_5y_lucro_liq: float,
-#     dividends_by_year: list,
-#     dividends_growth: float,
-# ) -> BaseAgentOutput:
-#     async def _analyze():
-#         r = await agent.run(
-#             f"""
-#             ## EMPRESA ANALISADA
-#             Ticker: {ticker}
-#             Nome: {company_name}
-#             Setor: {segment}
-
-#             ## DADOS FINANCEIROS
-#             ### Demonstração de Resultados (DRE)
-#             {dre_quarter}
-
-#             ### Balanço Patrimonial
-#             {balance_sheet_quarter}
-
-#             ### Fluxo de Caixa
-#             {cash_flow_quarter}
-
-#             ### Múltiplos e Indicadores
-#             {stock_details}
-
-#             - cagr_5y_receita_liq: {cagr_5y_receita_liq}
-#             - cagr_5y_lucro_liq: {cagr_5y_lucro_liq}
-#             - dividends_by_year: {dividends_by_year}
-#             - dividends_growth: {dividends_growth}
-#             """
-#         )
-#         return r.data
-
-#     if asyncio.get_event_loop().is_running():
-#         return asyncio.ensure_future(_analyze())
-#     else:
-#         return asyncio.run(_analyze())
-
 
 def analyze(
     ticker: str,
