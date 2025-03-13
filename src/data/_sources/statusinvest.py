@@ -36,7 +36,7 @@ def _fmt_value(value: str) -> float | str:
     cleaned_v = cleaned_v.replace('K', '').replace('M', '').replace('B', '').replace('%', '')
 
     try:
-        value_ok = float(cleaned_v) * mult
+        value_ok = round(float(cleaned_v) * mult, 4)
     except Exception as _:
         return value
 
@@ -139,9 +139,9 @@ def income_statement(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
-    period: Literal['quarter', 'year'] = 'quarter',
+    period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'year' else 1
+    _type = 0 if period == 'annual' else 1
     return _request_and_parse('getdre', ticker, _type, start_year, end_year)
 
 
@@ -149,9 +149,9 @@ def cash_flow(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
-    period: Literal['quarter', 'year'] = 'quarter',
+    period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'year' else 1
+    _type = 0 if period == 'annual' else 1
     return _request_and_parse('getfluxocaixa', ticker, _type, start_year, end_year)
 
 
@@ -159,9 +159,9 @@ def balance_sheet(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
-    period: Literal['quarter', 'year'] = 'quarter',
+    period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'year' else 1
+    _type = 0 if period == 'annual' else 1
     return _request_and_parse('getativos', ticker, _type, start_year, end_year)
 
 
@@ -201,7 +201,7 @@ def multiples(ticker: str) -> dict:
     all_years = sorted(set(year for values in data.values() for year in values))
     transformed_data = []
     for year in all_years:
-        entry = {'year': year}
+        entry = {'annual': year}
         for key in data:
             entry[key] = data[key].get(year, float('nan'))
         transformed_data.append(entry)

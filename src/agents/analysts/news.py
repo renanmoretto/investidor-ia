@@ -4,9 +4,10 @@ from typing import TypedDict
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
-from src.agents.base import BaseAgentOutput
 
+from src.agents.base import BaseAgentOutput
 from src.llm import ask
+from src.data import stocks
 
 
 class News(TypedDict):
@@ -39,7 +40,8 @@ def _search_news_einvestidor(ticker: str, company_name: str) -> list[News]:
     return news
 
 
-def analyze(ticker: str, company_name: str) -> BaseAgentOutput:
+def analyze(ticker: str) -> BaseAgentOutput:
+    company_name = stocks.name(ticker)
     news = _search_news_einvestidor(ticker, company_name)
 
     prompt = f"""
