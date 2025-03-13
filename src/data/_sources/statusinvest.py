@@ -3,7 +3,7 @@ from typing import Literal
 
 import pandas as pd
 import unidecode
-
+from bs4 import BeautifulSoup
 
 URL = 'https://statusinvest.com.br'
 
@@ -30,7 +30,7 @@ def _fmt_value(value: str) -> float | str:
     elif 'B' in value:
         mult = 1_000_000_000
     elif '%' in value:
-        mult = 0.1
+        mult = 0.01
     else:
         mult = 1
     cleaned_v = cleaned_v.replace('K', '').replace('M', '').replace('B', '').replace('%', '')
@@ -84,7 +84,58 @@ def _request_and_parse(
     ]
 
 
-def dre(
+def details(ticker: str) -> dict:
+    def _find_value(soup: BeautifulSoup, tag_name: str, text: str) -> float:
+        tag = soup.find(tag_name, string=text)
+        if tag:
+            value_s = tag.find_next('strong', class_='value').text
+            mult = 1
+            if '%' in value_s:
+                mult = 0.01
+            try:
+                value = float(value_s.replace('.', '').replace(',', '.').replace('%', '')) * mult
+            except ValueError as _:
+                return value_s
+            return value
+        return None
+
+    url = 'https://statusinvest.com.br/acoes/neoe3'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    r = requests.get(url, headers=headers)
+
+    soup = BeautifulSoup(r.text, 'html.parser')
+
+    company_div = soup.find('div', class_='company-description')
+    if company_div:
+        company_name = company_div.find('span', class_='text-main-green-dark').text.strip()
+        cnpj = company_div.find('small', class_='fs-4').text.strip()
+        site = company_div.find('a')['href']
+
+    return {
+        'nome': company_name,
+        'cnpj': cnpj,
+        'site': site,
+        'preco': _find_value(soup, 'h3', 'Valor atual'),
+        'patrimonio_liquido': _find_value(soup, 'h3', 'Patrimônio líquido'),
+        'ativos': _find_value(soup, 'h3', 'Ativos'),
+        'ativo_circulante': _find_value(soup, 'h3', 'Ativo circulante'),
+        'divida_bruta': _find_value(soup, 'h3', 'Dívida bruta'),
+        'disponibilidade': _find_value(soup, 'h3', 'Disponibilidade'),
+        'divida_liquida': _find_value(soup, 'h3', 'Dívida líquida'),
+        'valor_de_mercado': _find_value(soup, 'h3', 'Valor de mercado'),
+        'valor_de_firma': _find_value(soup, 'h3', 'Valor de firma'),
+        'numero_de_acoes': _find_value(soup, 'span', 'Nº total de papéis'),
+        'segmento_listagem': _find_value(soup, 'h3', 'Segmento de listagem'),
+        'free_float': _find_value(soup, 'h3', 'Free Float'),
+        'setor_de_atuacao': _find_value(soup, 'span', 'Setor de Atuação'),
+        'subsetor_de_atuacao': _find_value(soup, 'span', 'Subsetor de Atuação'),
+        'segmento_de_atuacao': _find_value(soup, 'span', 'Segmento de Atuação'),
+    }
+
+
+def income_statement(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,

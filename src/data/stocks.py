@@ -6,7 +6,7 @@ from ._sources import b3, statusinvest, fundamentus
 
 @cache_it
 def company_details(ticker: str) -> dict:
-    return b3.get_company_data(ticker)
+    return statusinvest.details(ticker)
 
 
 def company_name(ticker: str) -> str:
@@ -23,7 +23,7 @@ def income_statement(
     year_end: int | None = None,
     period: Literal['annual', 'quarter'] = 'annual',
 ) -> dict:
-    return statusinvest.dre(ticker, year_start, year_end, period)
+    return statusinvest.income_statement(ticker, year_start, year_end, period)
 
 
 def balance_sheet(
