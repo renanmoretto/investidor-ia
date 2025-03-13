@@ -8,54 +8,63 @@ import unidecode
 URL = 'https://statusinvest.com.br'
 
 
-def _transform_data(data: dict) -> list[dict]:
-    result = []
-
-    for d in data:
-        transformed_dict = {}
-
-        for k, v in d.items():
-            if k == 'index':
-                value = unidecode.unidecode(v.lower().replace(' ', '_').replace('_-_(r$)', '').replace('_-_(%)', ''))
-            elif v == '-':
-                value = float('nan')
-            else:
-                # Clean up the value string
-                cleaned_v = v.replace('.', '').replace(',', '.').replace(' ', '')
-
-                if '%' in v:
-                    # Handle percentage values
-                    cleaned_v = cleaned_v.replace('%', '')
-                    value = float(cleaned_v) / 100
-                else:
-                    # Handle monetary values with M suffix
-                    if 'K' in v:
-                        mult = 1_000
-                    elif 'M' in v:
-                        mult = 1_000_000
-                    elif 'B' in v:
-                        mult = 1_000_000_000
-                    else:
-                        mult = 1
-                    cleaned_v = cleaned_v.replace('K', '').replace('M', '').replace('B', '')
-                    value = float(cleaned_v) * mult
-
-            if 'Últ. 12M' in k:
-                k = 'ltm'
-
-            transformed_dict[k] = value
-
-        result.append(transformed_dict)
-
-    return result
+def _fmt_col_name(name: str) -> str:
+    if name == '#':
+        return 'data'
+    return unidecode.unidecode(name.lower().replace(' ', '_').replace('_-_(r$)', '').replace('_-_(%)', ''))
 
 
-def _request_and_parse(path: str, ticker: str, type_: int, start_year: int, end_year: int) -> list[dict]:
-    url = URL + f'/acao/{path}?code={ticker}&type={type_}&futureData=false&range.min={start_year}&range.max={end_year}'
+def _fmt_value(value: str) -> float | str:
+    if 'Últ. 12M' in value:
+        return 'ltm'
+
+    if value == '-':
+        return float('nan')
+
+    cleaned_v = value.replace('.', '').replace(',', '.').replace(' ', '')
+
+    if 'K' in value:
+        mult = 1_000
+    elif 'M' in value:
+        mult = 1_000_000
+    elif 'B' in value:
+        mult = 1_000_000_000
+    elif '%' in value:
+        mult = 0.1
+    else:
+        mult = 1
+    cleaned_v = cleaned_v.replace('K', '').replace('M', '').replace('B', '').replace('%', '')
+
+    try:
+        value_ok = float(cleaned_v) * mult
+    except Exception as _:
+        return value
+
+    return value_ok
+
+
+def _request_and_parse(
+    path: str,
+    ticker: str,
+    type_: int | None = None,
+    start_year: int | None = None,
+    end_year: int | None = None,
+) -> list[dict]:
+    params = {'code': ticker, 'futureData': 'false'}
+
+    if type_ is not None:
+        params['type'] = type_
+    if start_year is not None:
+        params['range.min'] = start_year
+    if end_year is not None:
+        params['range.max'] = end_year
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    r = requests.get(url, headers=headers)
+
+    url = URL + f'/acao/{path}'
+    r = requests.get(url, params=params, headers=headers)
     r_json = r.json()
     grid_data = r_json['data']['grid']
 
@@ -69,24 +78,37 @@ def _request_and_parse(path: str, ticker: str, type_: int, start_year: int, end_
             col_values.append(item['value'])
             raw_data[col_name] = col_values
 
-    data = pd.DataFrame(raw_data).set_index('#').T.reset_index().to_dict('records')
-    return _transform_data(data)
+    return [
+        {_fmt_col_name(key): _fmt_value(raw_data[key][i]) for key in raw_data}
+        for i in range(len(next(iter(raw_data.values()))))
+    ]
 
 
-def dre(ticker: str, start_year: int, end_year: int, period: Literal['quarter', 'year'] = 'quarter') -> list[dict]:
+def dre(
+    ticker: str,
+    start_year: int | None = None,
+    end_year: int | None = None,
+    period: Literal['quarter', 'year'] = 'quarter',
+) -> list[dict]:
     _type = 0 if period == 'year' else 1
     return _request_and_parse('getdre', ticker, _type, start_year, end_year)
 
 
 def cash_flow(
-    ticker: str, start_year: int, end_year: int, period: Literal['quarter', 'year'] = 'quarter'
+    ticker: str,
+    start_year: int | None = None,
+    end_year: int | None = None,
+    period: Literal['quarter', 'year'] = 'quarter',
 ) -> list[dict]:
     _type = 0 if period == 'year' else 1
     return _request_and_parse('getfluxocaixa', ticker, _type, start_year, end_year)
 
 
 def balance_sheet(
-    ticker: str, start_year: int, end_year: int, period: Literal['quarter', 'year'] = 'quarter'
+    ticker: str,
+    start_year: int | None = None,
+    end_year: int | None = None,
+    period: Literal['quarter', 'year'] = 'quarter',
 ) -> list[dict]:
     _type = 0 if period == 'year' else 1
     return _request_and_parse('getativos', ticker, _type, start_year, end_year)
@@ -102,7 +124,7 @@ def screener() -> list[dict]:
     return r_json['list']
 
 
-def indicator_history(ticker: str) -> dict:
+def multiples(ticker: str) -> dict:
     url = 'https://statusinvest.com.br/acao/indicatorhistoricallist'
     data = {'codes[]': ticker.lower(), 'time': 5, 'byQuarter': False, 'futureData': False}
 
@@ -124,4 +146,12 @@ def indicator_history(ticker: str) -> dict:
             hist_data[item['rank']] = v
         data[name] = hist_data
 
-    return data
+    # tks gpt
+    all_years = sorted(set(year for values in data.values() for year in values))
+    transformed_data = []
+    for year in all_years:
+        entry = {'year': year}
+        for key in data:
+            entry[key] = data[key].get(year, float('nan'))
+        transformed_data.append(entry)
+    return transformed_data[::-1]

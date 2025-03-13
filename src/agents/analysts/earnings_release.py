@@ -1,11 +1,26 @@
+import requests
+
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
 
+from src.data import stocks
 
-def analyze(release_pdf_bytes: bytes) -> BaseAgentOutput:
-    prompt = """
+
+def _get_earnings_release(ticker: str) -> bytes:
+    stock_releases = stocks.earnings_releases(ticker)
+    release_link = stock_releases[0]['download_link']
+    r = requests.get(release_link)
+    earnings_release_pdf_bytes = r.content
+    return earnings_release_pdf_bytes
+
+
+def analyze(ticker: str) -> BaseAgentOutput:
+    company_name = stocks.company_name(ticker)
+    release_pdf_bytes = _get_earnings_release(ticker)
+
+    prompt = f"""
     Você é um analista especializado em extrair e resumir informações relevantes de relatórios financeiros.
-    Sua tarefa é analisar o PDF do último earnings release desta empresa e criar um resumo estruturado destacando os pontos mais importantes mencionados no documento.
+    Sua tarefa é analisar o PDF do último earnings release da empresa {company_name} - {ticker} e criar um resumo estruturado destacando os pontos mais importantes mencionados no documento.
 
     ## OBJETIVO
     Fornecer um resumo claro e objetivo dos principais pontos abordados no earnings release, sem adicionar informações externas ou criar dados não presentes no documento original.

@@ -41,8 +41,9 @@ def analyze(
     A única seção obrigatória é a "CONCLUSÃO", onde você deve tomar a sua decisão final sobre a empresa e resumir os pontos importantes da sua análise.
 
     ### Seção de "CONCLUSÃO"
+    - texto deve ser longo e detalhado
     - Decisão clara: COMPRAR, NÃO COMPRAR ou OBSERVAR
-    - Justificativa baseada estritamente em seus princípios de investimento
+    - Sua opinião e justificativa baseada estritamente em seus princípios de investimento
     - Condições que poderiam mudar sua análise no futuro
 
     ## **IMPORTANTE**  

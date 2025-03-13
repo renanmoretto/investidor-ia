@@ -85,8 +85,29 @@ def stock_dividends(ticker: str) -> list[dict]:
     return data
 
 
-def stock_releases(ticker: str) -> list[dict]:
-    response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
+# def stock_fillings(ticker: str) -> list[dict]:
+#     response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
+
+#     soup = BeautifulSoup(response.text, 'html.parser')
+#     tables = soup.find_all('table')
+#     table = tables[0]
+
+#     data = []
+#     for r in table.find_all('tr')[1:]:
+#         _tds = r.find_all('td')
+#         data.append(
+#             {
+#                 'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y %H:%M').isoformat(),
+#                 'descricao': _tds[1].text,
+#                 'download_link': _tds[2].find('a')['href'],
+#             }
+#         )
+
+#     return data
+
+
+def earnings_releases(ticker: str) -> list[dict]:
+    response = _request(f'{URL}/resultados_trimestrais.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
@@ -95,11 +116,19 @@ def stock_releases(ticker: str) -> list[dict]:
     data = []
     for r in table.find_all('tr')[1:]:
         _tds = r.find_all('td')
+        try:
+            link_cvm = _tds[1].find('a')['href']
+        except Exception as _:
+            link_cvm = None
+        try:
+            download_link = _tds[2].find('a')['href']
+        except Exception as _:
+            download_link = None
         data.append(
             {
-                'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y %H:%M').isoformat(),
-                'descricao': _tds[1].text,
-                'download_link': _tds[2].find('a')['href'],
+                'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y').isoformat(),
+                'link_cvm': link_cvm,
+                'download_link': download_link,
             }
         )
 
