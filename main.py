@@ -23,11 +23,11 @@ from rich.table import Table
 from src import b3, fundamentus, statusinvest
 from src.utils import pdf_bytes_to_text
 from src.agents.analysts import (
-    earnings_release_analyst,
-    financial_analyst,
-    valuation_analyst,
-    news_analyst,
-    technical_analyst,
+    earnings_release,
+    financial,
+    news,
+    technical,
+    valuation,
 )
 from src.agents.investors import (
     graham,
@@ -64,8 +64,9 @@ async def investor_analyze(
     print(f'Coletando dados da empresa {ticker}...')
     b3_details = b3.get_company_data(ticker)
     company_name = b3_details.get('companyName', 'nan')
-    stock_details = fundamentus.stock_details(ticker)
-    stock_releases = fundamentus.stock_releases(ticker)
+
+    stock_details = fundamentus.stock_details(ticker)  # isso nao precisa, tem tudo no status invest
+    stock_releases = fundamentus.earnings_releases(ticker)
     dre_quarter = statusinvest.dre(ticker, year_start, year_end, 'quarter')
     dre_year = statusinvest.dre(ticker, year_start, year_end, 'year')
     cash_flow_year = statusinvest.cash_flow(ticker, year_start, year_end, 'year')
@@ -100,7 +101,6 @@ async def investor_analyze(
     release_link = stock_releases[0]['download_link']
     r = requests.get(release_link)
     earnings_release_pdf_bytes = r.content
-    earnings_release_text = pdf_bytes_to_text(earnings_release_pdf_bytes)[:50000]
 
     # status invest screener
     screener_statusinvest_df = (
@@ -131,10 +131,10 @@ async def investor_analyze(
     #     company_name=company_name,
     #     earnings_release_text=earnings_release_text,
     # )
-    earnings_release_analysis = earnings_release_analyst.analyze(release_pdf_bytes=earnings_release_pdf_bytes)
+    earnings_release_analysis = earnings_release.analyze(release_pdf_bytes=earnings_release_pdf_bytes)
 
     print('Analisando dados financeiros...')
-    financial_analysis = financial_analyst.analyze(
+    financial_analysis = financial.analyze(
         ticker=ticker,
         company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
@@ -149,7 +149,7 @@ async def investor_analyze(
     )
 
     print('Analisando valuation...')
-    valuation_analysis = valuation_analyst.analyze(
+    valuation_analysis = valuation.analyze(
         ticker=ticker,
         company_name=company_name,
         segment=b3_details.get('segment', 'nan'),
@@ -162,7 +162,7 @@ async def investor_analyze(
     )
 
     print('Analisando notícias...')
-    news_analysis = news_analyst.analyze(
+    news_analysis = news.analyze(
         ticker=ticker,
         company_name=company_name,
     )
