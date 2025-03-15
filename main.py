@@ -1,27 +1,7 @@
-import json
-import base64
-import io
-import datetime
-import os
-import asyncio
-from typing import Literal, Any
-
-import requests
-import yfinance as yf
-import pandas as pd
-import polars as pl
-import unidecode
-from bs4 import BeautifulSoup
-from google import genai
-from dotenv import load_dotenv
-from pydantic import BaseModel
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.pretty import pprint
 from rich.table import Table
 
-from src import b3, fundamentus, statusinvest
-from src.utils import pdf_bytes_to_text
 from src.agents.analysts import (
     earnings_release,
     financial,
@@ -35,7 +15,6 @@ from src.agents.investors import (
     lynch,
     barsi,
 )
-from src.llm import ask
 
 
 def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
@@ -52,7 +31,7 @@ def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
     return cagr
 
 
-async def investor_analyze(
+def investor_analyze(
     ticker: str,
     investor_name: str,
 ):
@@ -207,5 +186,5 @@ if __name__ == '__main__':
         print('Opção inválida!')
         exit(1)
 
-    analysis = asyncio.run(investor_analyze(ticker, investor_name))
+    analysis = investor_analyze(ticker, investor_name)
     print_result(analysis, investor_name)
