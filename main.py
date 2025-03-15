@@ -25,11 +25,7 @@ def investor_analyze(
     ticker = ticker.upper()
 
     # verifica se o ticker existe
-    try:
-        stocks.details(ticker)
-    except Exception as e:
-        print(f'Ticker não encontrado: {e}')
-        return
+    stocks.details(ticker)
 
     # ai analysts
     print('Analisando earnings release...')
