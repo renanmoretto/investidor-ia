@@ -56,169 +56,37 @@ async def investor_analyze(
     ticker: str,
     investor_name: str,
 ):
-    today = datetime.date.today()
-    year_start = today.year - 5
-    year_end = today.year
-
-    # get all data
-    print(f'Coletando dados da empresa {ticker}...')
-    b3_details = b3.get_company_data(ticker)
-    company_name = b3_details.get('companyName', 'nan')
-
-    stock_details = fundamentus.stock_details(ticker)  # isso nao precisa, tem tudo no status invest
-    stock_releases = fundamentus.earnings_releases(ticker)
-    dre_quarter = statusinvest.dre(ticker, year_start, year_end, 'quarter')
-    dre_year = statusinvest.dre(ticker, year_start, year_end, 'year')
-    cash_flow_year = statusinvest.cash_flow(ticker, year_start, year_end, 'year')
-    cash_flow_quarter = statusinvest.cash_flow(ticker, year_start, year_end, 'quarter')
-    balance_sheet_year = statusinvest.balance_sheet(ticker, year_start, year_end, 'year')
-    balance_sheet_quarter = statusinvest.balance_sheet(ticker, year_start, year_end, 'quarter')
-    screener_statusinvest = statusinvest.screener()
-    historical_multiples = statusinvest.indicator_history(ticker)
-    dividends = fundamentus.stock_dividends(ticker)
-    cagr_5y_receita_liq = _calc_cagr(dre_year, 'receita_liquida', 5)
-    cagr_5y_lucro_liq = _calc_cagr(dre_year, 'lucro_liquido', 5)
-
-    if dividends:
-        dividends_by_year = (
-            pl.DataFrame(dividends)
-            .with_columns(year=pl.col('data_pagamento').str.slice(0, 4).cast(pl.Int64))
-            .group_by('year')
-            .agg(pl.col('valor').sum().round(4))
-            .sort('year')
-            .to_dicts()
-        )
-        dividends_growth = (
-            pl.DataFrame(dividends_by_year)
-            .with_columns(valor=pl.col('valor').pct_change().round(4))
-            .drop_nulls()
-            .to_dicts()
-        )
-    else:
-        dividends_by_year = []
-        dividends_growth = []
-
-    release_link = stock_releases[0]['download_link']
-    r = requests.get(release_link)
-    earnings_release_pdf_bytes = r.content
-
-    # status invest screener
-    screener_statusinvest_df = (
-        pl.DataFrame(screener_statusinvest)
-        .with_columns(stock=pl.col('ticker').str.slice(0, 4))
-        .sort('stock', 'liquidezmediadiaria')  # pega apenas o ticker que tem mais liquidez
-        .unique('stock', keep='last')
-        .filter(pl.col('price') > 0, pl.col('liquidezmediadiaria') > 0)
-    )
-    _stock_segment = screener_statusinvest_df.filter(pl.col('ticker') == ticker)['segmentname'][0]
-
-    segment_means = screener_statusinvest_df.filter(pl.col('segmentname') == _stock_segment).mean()
-    segment_medians = screener_statusinvest_df.filter(pl.col('segmentname') == _stock_segment).median()
-    stock_multiples = screener_statusinvest_df.filter(pl.col('ticker') == ticker)
-    market_multiples_median = (
-        screener_statusinvest_df.filter(
-            pl.col('valormercado') > 1e9,
-            pl.col('liquidezmediadiaria') > 1e6,
-        )
-        .sort('liquidezmediadiaria', descending=True)
-        .median()
-    )
-
     # ai analysts
     print('Analisando earnings release...')
-    # earnings_release_analysis = earnings_release_analyst.analyze(
-    #     ticker=ticker,
-    #     company_name=company_name,
-    #     earnings_release_text=earnings_release_text,
-    # )
-    earnings_release_analysis = earnings_release.analyze(release_pdf_bytes=earnings_release_pdf_bytes)
+    earnings_release_analysis = earnings_release.analyze(ticker)
 
     print('Analisando dados financeiros...')
-    financial_analysis = financial.analyze(
-        ticker=ticker,
-        company_name=company_name,
-        segment=b3_details.get('segment', 'nan'),
-        dre_quarter=pd.DataFrame(dre_quarter).set_index('index').to_dict(),
-        cash_flow_quarter=pd.DataFrame(cash_flow_quarter).set_index('index').to_dict(),
-        balance_sheet_quarter=pd.DataFrame(balance_sheet_quarter).set_index('index').to_dict(),
-        stock_details=stock_details,
-        cagr_5y_receita_liq=cagr_5y_receita_liq,
-        cagr_5y_lucro_liq=cagr_5y_lucro_liq,
-        dividends_by_year=dividends_by_year,
-        dividends_growth=dividends_growth,
-    )
+    financial_analysis = financial.analyze(ticker)
 
     print('Analisando valuation...')
-    valuation_analysis = valuation.analyze(
-        ticker=ticker,
-        company_name=company_name,
-        segment=b3_details.get('segment', 'nan'),
-        current_price=stock_details.get('price', float('nan')),
-        current_multiples=stock_multiples.to_dicts()[0],
-        historical_multiples=historical_multiples,
-        sector_multiples_mean=segment_means.to_dicts()[0],
-        sector_multiples_median=segment_medians.to_dicts()[0],
-        market_multiples_median=market_multiples_median.to_dicts()[0],
-    )
+    valuation_analysis = valuation.analyze(ticker)
 
     print('Analisando notícias...')
-    news_analysis = news.analyze(
-        ticker=ticker,
-        company_name=company_name,
-    )
+    news_analysis = news.analyze(ticker=ticker)
 
     # investor analysis
     print('Gerando resposta final...')
     if investor_name == 'buffett':
         investor_analysis = buffett.analyze(
             ticker=ticker,
-            company_name=company_name,
-            segment=b3_details.get('segment', 'nan'),
             earnings_release_analysis=earnings_release_analysis,
             financial_analysis=financial_analysis,
             valuation_analysis=valuation_analysis,
             news_analysis=news_analysis,
-            dre_year=dre_year,
-            preco_sobre_lucro=stock_details.get('p_l', float('nan')),
-            preco_sobre_valor_patrimonial=stock_details.get('p_vp', float('nan')),
-            crescimento_dividendos_anuais=dividends_growth,
-            cagr_5y_receita_liq=cagr_5y_receita_liq,
-            cagr_5y_lucro_liq=cagr_5y_lucro_liq,
         )
 
     elif investor_name == 'graham':
-        classic_criteria = {
-            'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
-            'preco_sobre_lucro': stock_details.get('p_l', float('nan')),
-            'preco_sobre_lucro_abaixo_15x': stock_details.get('p_l', float('nan')) < 15,
-            'preco_sobre_valor_patrimonial': stock_details.get('p_vp', float('nan')),
-            'preco_sobre_valor_patrimonial_abaixo_1.5x': stock_details.get('p_vp', float('nan')) < 1.5,
-            'divida_bruta': stock_details.get('div_bruta', float('nan')),
-            'patrimonio_liquido': stock_details.get('patrim_liq', float('nan')),
-            'divida_menor_que_patrimonio_liquido': stock_details.get('div_liq', float('nan'))
-            < stock_details.get('patrim_liq', float('nan')),
-            'crescimento_dividendos_anuais': dividends_growth,
-            'lucro_liquido_positivo_nos_ultimos_5_anos': all(
-                [v > 0 for v in list([d for d in dre_year if 'lucro_liquido' in d['index']][0].values())[1:]]
-            ),
-            'cagr_5y_receita_liq': cagr_5y_receita_liq,
-            'cagr_5y_lucro_liq': cagr_5y_lucro_liq,
-            'ativo_circulante_sobre_passivo_circulante': pl.DataFrame(balance_sheet_quarter)
-            .transpose(include_header=True, column_names='index')
-            .head(1)
-            .with_columns(v=pl.col('ativo_circulante') / pl.col('passivo_circulante'))['v']
-            .round(4)[0],
-        }
         investor_analysis = graham.analyze(
             ticker=ticker,
-            company_name=company_name,
-            segment=b3_details.get('segment', 'nan'),
             earnings_release_analysis=earnings_release_analysis,
             financial_analysis=financial_analysis,
             valuation_analysis=valuation_analysis,
             news_analysis=news_analysis,
-            dre_year=dre_year,
-            classic_criteria=classic_criteria,
         )
 
     elif investor_name == 'lynch':
@@ -227,21 +95,10 @@ async def investor_analyze(
     elif investor_name == 'barsi':
         investor_analysis = barsi.analyze(
             ticker=ticker,
-            company_name=company_name,
-            segment=b3_details.get('segment', 'nan'),
             earnings_release_analysis=earnings_release_analysis,
             financial_analysis=financial_analysis,
             valuation_analysis=valuation_analysis,
             news_analysis=news_analysis,
-            dre_year=dre_year,
-            preco_sobre_lucro=stock_details.get('p_l', float('nan')),
-            preco_sobre_valor_patrimonial=stock_details.get('p_vp', float('nan')),
-            crescimento_dividendos_anuais=dividends_growth,
-            cagr_5y_receita_liq=cagr_5y_receita_liq,
-            cagr_5y_lucro_liq=cagr_5y_lucro_liq,
-            dividend_history=dividends_by_year,
-            dividend_yield=list(historical_multiples['dy'].values())[0],
-            dividend_yield_per_year=historical_multiples['dy'],
         )
 
     else:

@@ -1,18 +1,29 @@
+import polars as pl
+
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
+from src.data import stocks
 
 
-def analyze(
-    ticker: str,
-    company_name: str,
-    segment: str,
-    current_price: float,
-    current_multiples: dict,
-    historical_multiples: dict,
-    sector_multiples_mean: dict,
-    sector_multiples_median: dict,
-    market_multiples_median: dict,
-) -> str:
+def analyze(ticker: str) -> str:
+    details = stocks.details(ticker)
+    _screener = stocks.screener()
+    screener = (
+        pl.DataFrame(_screener)
+        .with_columns(stock=pl.col('ticker').str.slice(0, 4))
+        .sort('stock', 'liquidezmediadiaria')  # pega apenas o ticker que tem mais liquidez
+        .unique('stock', keep='last')
+        .filter(pl.col('price') > 0, pl.col('liquidezmediadiaria') > 0)
+    )
+
+    company_name = details['nome']
+    segment = details.get('segmento_de_atuacao', 'nan')
+    current_price = details.get('preco', float('nan'))
+    five_years_historical_multiples = stocks.multiples(ticker)[:5]
+    sector_multiples_mean = screener.filter(pl.col('segmentname') == segment).mean()
+    sector_multiples_median = screener.filter(pl.col('segmentname') == segment).median()
+    total_market_multiples_median = screener.median()
+
     prompt = f"""
     Você é um analista especializado em valuation relativo de empresas. Sua tarefa é analisar se a empresa está cara ou barata em relação ao seu setor, mercado e seu próprio histórico, utilizando exclusivamente múltiplos e indicadores comparativos.
 
@@ -38,6 +49,7 @@ def analyze(
         - Para empresas maduras e estáveis, priorize múltiplos como P/L, P/VP, DY e métricas de rentabilidade
         - Para empresas cíclicas, considere múltiplos ao longo do ciclo econômico
         - Para empresas de capital intensivo, dê atenção especial ao EV/EBITDA, ROIC, etc
+        - Leve em consideração o setor da empresa para interpretar os múltiplos, setores mais especulativos/inovadores podem ter múltiplos maiores
 
     ## DIRETRIZES IMPORTANTES
     - Foque exclusivamente em múltiplos e indicadores objetivos
@@ -73,11 +85,8 @@ def analyze(
     Setor: {segment}
     Preço Atual: {current_price}
 
-    ### Múltiplos Atuais da Empresa
-    {current_multiples}
-
     ### Múltiplos Históricos da Empresa (5 anos)
-    {historical_multiples}
+    {five_years_historical_multiples}
 
     ### Múltiplos do Setor (média) (pode ter distorções)
     {sector_multiples_mean}
@@ -86,7 +95,7 @@ def analyze(
     {sector_multiples_median}
 
     ### Múltiplos do Mercado (mediana)
-    {market_multiples_median}
+    {total_market_multiples_median}
 
     """
 

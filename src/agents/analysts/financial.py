@@ -1,23 +1,36 @@
-import asyncio
-from typing import Any
+import datetime
+
+import polars as pl
 
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
+from src.data import stocks
+from src.utils import calc_cagr
 
 
-def analyze(
-    ticker: str,
-    company_name: str,
-    segment: str,
-    dre_quarter: Any,
-    cash_flow_quarter: Any,
-    balance_sheet_quarter: Any,
-    stock_details: dict,
-    cagr_5y_receita_liq: float,
-    cagr_5y_lucro_liq: float,
-    dividends_by_year: list,
-    dividends_growth: float,
-) -> str:
+def analyze(ticker: str) -> str:
+    today = datetime.date.today()
+    year_start = today.year - 5
+    year_end = today.year
+
+    company_name = stocks.name(ticker)
+    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    dre_year = stocks.dre(ticker, year_start, year_end, 'year')
+    dre_quarter = stocks.dre(ticker, year_start, year_end, 'quarter')
+    balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
+    cash_flow = stocks.cash_flow(ticker, year_start, year_end)
+    stock_details = stocks.multiples(ticker)
+    cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
+    cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
+    dividends_by_year = stocks.dividends_by_year(ticker)
+    dividends_growth = (
+        pl.DataFrame(dividends_by_year)
+        .sort('year')
+        .with_columns(valor=pl.col('valor').pct_change().round(4))
+        .drop_nulls()
+        .to_dicts()
+    )
+
     prompt = f"""
     Você é um analista financeiro especializado em análise fundamentalista de demonstrações financeiras.
     Sua tarefa é analisar objetivamente os dados financeiros fornecidos e extrair conclusões imparciais sobre a qualidade dos números, saúde financeira e desempenho da empresa.
@@ -87,8 +100,8 @@ def analyze(
     ### Balanço Patrimonial
     {balance_sheet_quarter}
 
-    ### Fluxo de Caixa
-    {cash_flow_quarter}
+    ### Fluxo de Caixa Anual
+    {cash_flow}
 
     ### Múltiplos e Indicadores
     {stock_details}

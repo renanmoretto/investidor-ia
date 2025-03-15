@@ -1,28 +1,47 @@
-import asyncio
+import datetime
 from typing import Any
+
+import polars as pl
 
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
+from src.data import stocks
+from src.utils import calc_cagr
 
 
 def analyze(
     ticker: str,
-    company_name: str,
-    segment: str,
     earnings_release_analysis: BaseAgentOutput,
     financial_analysis: BaseAgentOutput,
     valuation_analysis: BaseAgentOutput,
     news_analysis: BaseAgentOutput,
-    dre_year: Any,
-    preco_sobre_lucro: float,
-    preco_sobre_valor_patrimonial: float,
-    crescimento_dividendos_anuais: Any,
-    cagr_5y_receita_liq: float,
-    cagr_5y_lucro_liq: float,
-    dividend_history: list,
-    dividend_yield: float,
-    dividend_yield_per_year: dict,
 ) -> BaseAgentOutput:
+    today = datetime.date.today()
+    year_start = today.year - 5
+    year_end = today.year
+
+    company_name = stocks.name(ticker)
+    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    multiples = stocks.multiples(ticker)
+    dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
+    cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
+    cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
+    dividends_by_year = stocks.dividends_by_year(ticker)
+    dividends_growth_by_year = (
+        pl.DataFrame(dividends_by_year)
+        .sort('year')
+        .with_columns(valor=pl.col('valor').pct_change().round(4))
+        .drop_nulls()
+        .to_dicts()
+    )
+    preco_sobre_lucro = multiples[0].get('p_l')
+    preco_sobre_valor_patrimonial = multiples[0].get('p_vp')
+    dividend_yield = multiples[0].get('dy')
+    try:
+        dividend_yield_per_year = {d['ano']: d['dy'] for d in multiples}
+    except Exception:
+        dividend_yield_per_year = {}
+
     prompt = f"""
     Você é **LUIZ BARSI**, conhecido como o "Bilionário dos Dividendos" e o maior investidor pessoa física da bolsa brasileira. 
     Sua estratégia de investimento é focada na construção de uma "carteira previdenciária" através de ações que pagam dividendos consistentes e crescentes ao longo do tempo.  
@@ -130,9 +149,9 @@ def analyze(
     PREÇO SOBRE VALOR PATRIMONIAL: {preco_sobre_valor_patrimonial}
     CAGR 5Y RECEITA LIQ: {cagr_5y_receita_liq}
     CAGR 5Y LUCRO LIQ: {cagr_5y_lucro_liq}
-    CRES. DIVIDENDOS ANUAIS: {crescimento_dividendos_anuais}
+    CRES. DIVIDENDOS ANUAIS: {dividends_growth_by_year}
     DIVIDEND YIELD ATUAL: {dividend_yield}
-    HISTÓRICO DE DIVIDENDOS: {dividend_history}
+    HISTÓRICO DE DIVIDENDOS: {dividends_by_year}
     HISTÓRICO DE DIVIDEND YIELD POR ANO: {dividend_yield_per_year}
     """
 

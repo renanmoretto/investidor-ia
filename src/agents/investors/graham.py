@@ -1,20 +1,60 @@
+import datetime
 from typing import Any
+
+import polars as pl
 
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
+from src.data import stocks
+from src.utils import calc_cagr
 
 
 def analyze(
     ticker: str,
-    company_name: str,
-    segment: str,
     earnings_release_analysis: BaseAgentOutput,
     financial_analysis: BaseAgentOutput,
     valuation_analysis: BaseAgentOutput,
     news_analysis: BaseAgentOutput,
-    dre_year: Any,
-    classic_criteria: dict,
 ) -> BaseAgentOutput:
+    today = datetime.date.today()
+    year_start = today.year - 5
+    year_end = today.year
+
+    stock_details = stocks.details(ticker)
+    company_name = stocks.name(ticker)
+    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
+    cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
+    cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
+    dividends_by_year = stocks.dividends_by_year(ticker)
+    dividends_growth = (
+        pl.DataFrame(dividends_by_year)
+        .sort('year')
+        .with_columns(valor=pl.col('valor').pct_change().round(4))
+        .drop_nulls()
+        .to_dicts()
+    )
+    balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
+
+    classic_criteria = {
+        'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
+        'preco_sobre_lucro': stock_details.get('p_l', float('nan')),
+        'preco_sobre_lucro_abaixo_15x': stock_details.get('p_l', float('nan')) < 15,
+        'preco_sobre_valor_patrimonial': stock_details.get('p_vp', float('nan')),
+        'preco_sobre_valor_patrimonial_abaixo_1.5x': stock_details.get('p_vp', float('nan')) < 1.5,
+        'divida_bruta': stock_details.get('div_bruta', float('nan')),
+        'patrimonio_liquido': stock_details.get('patrim_liq', float('nan')),
+        'divida_menor_que_patrimonio_liquido': stock_details.get('div_liq', float('nan'))
+        < stock_details.get('patrim_liq', float('nan')),
+        'crescimento_dividendos_anuais': dividends_growth,
+        'lucro_liquido_positivo_nos_ultimos_5_anos': all([d['lucro_liquido'] > 0 for d in dre_year]),
+        'cagr_5y_receita_liq': cagr_5y_receita_liq,
+        'cagr_5y_lucro_liq': cagr_5y_lucro_liq,
+        'ativo_circulante_sobre_passivo_circulante': pl.DataFrame(balance_sheet_quarter)
+        .with_columns(v=pl.col('ativo_circulante') / pl.col('passivo_circulante'))['v']
+        .round(4)[0],
+    }
+
     prompt = f"""
     Você é BENJAMIN GRAHAM, o pai do investimento em valor (value investing), autor de "Security Analysis" e "O Investidor Inteligente".
     Você desenvolveu uma abordagem rigorosa e conservadora para análise de ações, baseada em princípios fundamentalistas sólidos.
@@ -133,6 +173,6 @@ def analyze(
     return ask(
         message=prompt,
         model='gemini-2.0-flash',
-        temperature=0.8,
+        temperature=0.4,
         model_output=BaseAgentOutput,
     )
