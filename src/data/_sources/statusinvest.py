@@ -78,10 +78,18 @@ def _request_and_parse(
             col_values.append(item['value'])
             raw_data[col_name] = col_values
 
-    return [
+    data = [
         {_fmt_col_name(key): _fmt_value(raw_data[key][i]) for key in raw_data}
         for i in range(len(next(iter(raw_data.values()))))
     ]
+
+    # se annual, str year sem '.0', tipo 2020.0 > '2020'
+    if type_ == 0:
+        for d in data:
+            if 'data' in d.keys():
+                d['data'] = str(d['data']).replace('.0', '')
+
+    return data
 
 
 def details(ticker: str) -> dict:
@@ -149,10 +157,12 @@ def cash_flow(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
-    period: Literal['quarter', 'annual'] = 'quarter',
+    # period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'annual' else 1
-    return _request_and_parse('getfluxocaixa', ticker, _type, start_year, end_year)
+    """só tem annual pq o statusinvest não tem cash flow por trimestre certo"""
+    # _type = 0 if period == 'annual' else 1
+    type_ = 0
+    return _request_and_parse('getfluxocaixa', ticker, type_, start_year, end_year)
 
 
 def balance_sheet(
@@ -201,7 +211,7 @@ def multiples(ticker: str) -> dict:
     all_years = sorted(set(year for values in data.values() for year in values))
     transformed_data = []
     for year in all_years:
-        entry = {'annual': year}
+        entry = {'ano': year}
         for key in data:
             entry[key] = data[key].get(year, float('nan'))
         transformed_data.append(entry)

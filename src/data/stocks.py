@@ -44,9 +44,9 @@ def cash_flow(
     ticker: str,
     year_start: int | None = None,
     year_end: int | None = None,
-    period: Literal['annual', 'quarter'] = 'annual',
+    # period: Literal['annual', 'quarter'] = 'annual',
 ) -> dict:
-    return statusinvest.cash_flow(ticker, year_start, year_end, period)
+    return statusinvest.cash_flow(ticker, year_start, year_end)
 
 
 @cache_it
@@ -57,6 +57,19 @@ def multiples(ticker: str) -> dict:
 @cache_it
 def dividends(ticker: str) -> list[dict]:
     return fundamentus.stock_dividends(ticker)
+
+
+@cache_it
+def dividends_by_year(ticker: str) -> list[dict]:
+    stick_dividends = dividends(ticker)
+    yearly_dividends = {}
+    for dividend in stick_dividends:
+        year = int(dividend['data_pagamento'][:4])
+        if year not in yearly_dividends:
+            yearly_dividends[year] = 0
+        yearly_dividends[year] += dividend['valor']
+
+    return [{'year': year, 'valor': round(value, 8)} for year, value in sorted(yearly_dividends.items())]
 
 
 @cache_it
