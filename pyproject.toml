@@ -13,7 +13,6 @@ dependencies = [
     "polars>=1.24.0",
     "pyarrow>=19.0.1",
     "pydantic>=2.10.6",
-    "pydantic-ai-slim[duckduckgo]>=0.0.36",
     "pymupdf>=1.25.3",
     "requests>=2.32.3",
     "rich>=13.9.4",
