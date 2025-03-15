@@ -15,8 +15,8 @@ def analyze(ticker: str) -> str:
 
     company_name = stocks.name(ticker)
     segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
-    dre_year = stocks.dre(ticker, year_start, year_end, 'year')
-    dre_quarter = stocks.dre(ticker, year_start, year_end, 'quarter')
+    dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
+    dre_quarter = stocks.income_statement(ticker, year_start, year_end, 'quarter')
     balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
     cash_flow = stocks.cash_flow(ticker, year_start, year_end)
     stock_details = stocks.multiples(ticker)

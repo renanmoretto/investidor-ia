@@ -15,11 +15,6 @@ def name(ticker: str) -> str:
 
 
 @cache_it
-def earnings_releases(ticker: str) -> list[str]:
-    return fundamentus.earnings_releases(ticker)
-
-
-@cache_it
 def income_statement(
     ticker: str,
     year_start: int | None = None,
@@ -56,7 +51,7 @@ def multiples(ticker: str) -> dict:
 
 @cache_it
 def dividends(ticker: str) -> list[dict]:
-    return fundamentus.stock_dividends(ticker)
+    return fundamentus.proventos(ticker)
 
 
 @cache_it

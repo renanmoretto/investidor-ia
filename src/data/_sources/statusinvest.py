@@ -107,7 +107,7 @@ def details(ticker: str) -> dict:
             return value
         return None
 
-    url = 'https://statusinvest.com.br/acoes/neoe3'
+    url = f'https://statusinvest.com.br/acoes/{ticker}'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
@@ -120,6 +120,9 @@ def details(ticker: str) -> dict:
         company_name = company_div.find('span', class_='text-main-green-dark').text.strip()
         cnpj = company_div.find('small', class_='fs-4').text.strip()
         site = company_div.find('a')['href']
+
+    if not company_div:
+        raise ValueError('Ticker não encontrado')
 
     return {
         'nome': company_name,

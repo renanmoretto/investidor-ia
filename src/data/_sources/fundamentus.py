@@ -18,7 +18,7 @@ def _request(url: str) -> requests.Response:
     return response
 
 
-def stock_details(ticker: str) -> dict:
+def detalhes(ticker: str) -> dict:
     response = _request(f'{URL}/detalhes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -52,7 +52,7 @@ def stock_details(ticker: str) -> dict:
     return data
 
 
-def stock_dividends(ticker: str) -> list[dict]:
+def proventos(ticker: str) -> list[dict]:
     response = _request(f'{URL}/proventos.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -85,28 +85,7 @@ def stock_dividends(ticker: str) -> list[dict]:
     return data
 
 
-# def stock_fillings(ticker: str) -> list[dict]:
-#     response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
-
-#     soup = BeautifulSoup(response.text, 'html.parser')
-#     tables = soup.find_all('table')
-#     table = tables[0]
-
-#     data = []
-#     for r in table.find_all('tr')[1:]:
-#         _tds = r.find_all('td')
-#         data.append(
-#             {
-#                 'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y %H:%M').isoformat(),
-#                 'descricao': _tds[1].text,
-#                 'download_link': _tds[2].find('a')['href'],
-#             }
-#         )
-
-#     return data
-
-
-def earnings_releases(ticker: str) -> list[dict]:
+def resultados_trimestrais(ticker: str) -> list[dict]:
     response = _request(f'{URL}/resultados_trimestrais.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -128,6 +107,31 @@ def earnings_releases(ticker: str) -> list[dict]:
             {
                 'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y').isoformat(),
                 'link_cvm': link_cvm,
+                'download_link': download_link,
+            }
+        )
+
+    return data
+
+
+def apresentacoes(ticker: str) -> list[dict]:
+    response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    tables = soup.find_all('table')
+    table = tables[0]
+
+    data = []
+    for r in table.find_all('tr')[1:]:
+        _tds = r.find_all('td')
+        try:
+            download_link = _tds[2].find('a')['href']
+        except Exception as _:
+            download_link = None
+        data.append(
+            {
+                'data': datetime.datetime.strptime(_tds[0].text.replace('\xa0', ' '), '%d/%m/%Y %H:%M').isoformat(),
+                'descricao': _tds[1].text,
                 'download_link': download_link,
             }
         )

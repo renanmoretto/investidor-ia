@@ -4,19 +4,30 @@ from src.llm import ask
 from src.agents.base import BaseAgentOutput
 
 from src.data import stocks
+from src.data._sources import fundamentus
 
 
 def _get_earnings_release(ticker: str) -> bytes:
-    stock_releases = stocks.earnings_releases(ticker)
-    release_link = stock_releases[0]['download_link']
-    r = requests.get(release_link)
+    results_trimestrais = fundamentus.resultados_trimestrais(ticker)
+    download_link = results_trimestrais[0]['download_link']
+    if download_link is None:
+        download_link = fundamentus.apresentacoes(ticker)[0]['download_link']
+
+    if download_link is None:
+        raise ValueError('Não foi possível encontrar o earnings release')
+
+    r = requests.get(download_link)
     earnings_release_pdf_bytes = r.content
     return earnings_release_pdf_bytes
 
 
 def analyze(ticker: str) -> BaseAgentOutput:
-    company_name = stocks.company_name(ticker)
-    release_pdf_bytes = _get_earnings_release(ticker)
+    company_name = stocks.name(ticker)
+    try:
+        release_pdf_bytes = _get_earnings_release(ticker)
+    except Exception as e:
+        print(f'Link de earnings release não encontrado: {e}')
+        return BaseAgentOutput(content='Link de earnings release não encontrado', sentiment='NEUTRAL', confidence=0)
 
     prompt = f"""
     Você é um analista especializado em extrair e resumir informações relevantes de relatórios financeiros.
