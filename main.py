@@ -15,26 +15,22 @@ from src.agents.investors import (
     lynch,
     barsi,
 )
-
-
-def _calc_cagr(data: dict, name: str, length: int = 5) -> float:
-    _data = [d for d in data if name in d['index']][0]
-    values = list(_data.values())[1:][::-1][-length:]
-    if values[-1] < 0 or values[0] < 0:
-        # If either value is negative, use absolute values and multiply by -1 if end value is negative
-        cagr = round((abs(values[-1]) / abs(values[0])) ** (1 / (len(values) - 1)) - 1, 4)
-        if values[-1] < 0:
-            cagr = -cagr
-    else:
-        cagr = round((values[-1] / values[0]) ** (1 / (len(values) - 1)) - 1, 4)
-
-    return cagr
+from src.data import stocks
 
 
 def investor_analyze(
     ticker: str,
     investor_name: str,
 ):
+    ticker = ticker.upper()
+
+    # verifica se o ticker existe
+    try:
+        stocks.details(ticker)
+    except Exception as e:
+        print(f'Ticker não encontrado: {e}')
+        return
+
     # ai analysts
     print('Analisando earnings release...')
     earnings_release_analysis = earnings_release.analyze(ticker)
