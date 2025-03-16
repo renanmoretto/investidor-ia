@@ -3,15 +3,10 @@ import time
 import json
 
 from google import genai
-from dotenv import load_dotenv
 from pydantic import BaseModel
 
 
-load_dotenv(override=True)
-
-
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-openai_api_key = os.getenv('OPENAI_API_KEY')
+from src.settings import GEMINI_API_KEY
 
 
 def _ask_gemini(
@@ -20,7 +15,7 @@ def _ask_gemini(
     prompt: str,
     pdf_content: bytes | None = None,
 ):
-    client = genai.Client(api_key=gemini_api_key)
+    client = genai.Client(api_key=GEMINI_API_KEY)
     if pdf_content:
         content = genai.types.Part.from_bytes(
             data=pdf_content,
@@ -70,15 +65,3 @@ def ask(
             print(f'Failed attempt {attempt + 1} of {retries}: {str(e)}')
             time.sleep(1)
             continue
-
-
-# def get_model():
-#     if gemini_api_key:
-#         return GeminiModel('gemini-2.0-flash', provider='google-gla')
-#     elif openai_api_key:
-#         return OpenAIModel('gpt-4o-mini', provider='openai')
-#     else:
-#         raise ValueError('No API key found')
-
-
-# model = get_model()
