@@ -21,18 +21,22 @@ def _get_api_key(api_name) -> str | None:
         return None
 
 
-# Input para API KEY do Gemini
-gemini_key = st.text_input('GEMINI API KEY', type='password', value=_get_api_key('gemini'))
+def _save_api_key(api_name, api_key):
+    try:
+        with open(os.path.join(DB_DIR, 'api_keys.json'), 'r') as f:
+            api_keys = json.load(f)
+    except FileNotFoundError:
+        api_keys = {}
 
-# Botão de salvar
-if st.button('Salvar'):
-    # Criar diretório se não existir
-    os.makedirs(DB_DIR, exist_ok=True)
+    api_keys[api_name] = api_key
 
-    # Salvar API key em um arquivo JSON
-    api_keys = {'gemini': gemini_key}
     with open(os.path.join(DB_DIR, 'api_keys.json'), 'w') as f:
         json.dump(api_keys, f)
 
+
+gemini_key = st.text_input('GEMINI API KEY', type='password', value=_get_api_key('gemini'))
+
+if st.button('Salvar'):
+    _save_api_key('gemini', gemini_key)
     st.success('API Key salva com sucesso!')
     reload_api_keys()

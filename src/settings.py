@@ -2,10 +2,13 @@ import json
 from pathlib import Path
 
 
-def _get_api_key(provider: str) -> str:
-    with open(DB_DIR / 'api_keys.json', 'r') as f:
-        api_keys = json.load(f)
-    return api_keys.get(provider)
+def _get_api_key(provider: str) -> str | None:
+    try:
+        with open(DB_DIR / 'api_keys.json', 'r') as f:
+            api_keys = json.load(f)
+        return api_keys.get(provider)
+    except FileNotFoundError:
+        return None
 
 
 PROJECT_DIR = Path(__file__).parent.parent
