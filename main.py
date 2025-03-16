@@ -1,3 +1,5 @@
+import argparse
+
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
@@ -158,22 +160,33 @@ def print_result(analysis: dict, investor_name: str):
 
 
 if __name__ == '__main__':
-    ticker = input('Ticker: ')
-    print('\nEscolha o investidor:')
-    print('1 - Warren Buffett')
-    print('2 - Benjamin Graham')
-    print('3 - Peter Lynch')
-    print('4 - Luiz Barsi')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ticker', type=str, help='Ticker da ação')
+    parser.add_argument('--investor', type=str, help='Investidor')
+    args = parser.parse_args()
 
-    investor_choice = input('\nOpção: ')
-    investor_map = {
-        '1': 'buffett',
-        '2': 'graham',
-        '3': 'lynch',
-        '4': 'barsi',
-    }
+    if args.ticker:
+        ticker = args.ticker
+    else:
+        ticker = input('Ticker: ')
 
-    investor_name = investor_map.get(investor_choice)
+    if args.investor:
+        investor_name = args.investor
+    else:
+        print('\nEscolha o investidor:')
+        print('1 - Warren Buffett')
+        print('2 - Benjamin Graham')
+        print('3 - Peter Lynch')
+        print('4 - Luiz Barsi')
+        investor_choice = input('\nOpção: ')
+        investor_map = {
+            '1': 'buffett',
+            '2': 'graham',
+            '3': 'lynch',
+            '4': 'barsi',
+        }
+        investor_name = investor_map.get(investor_choice)
+
     if not investor_name:
         print('Opção inválida!')
         exit(1)
