@@ -30,15 +30,11 @@ staticfiles/
 .cursor
 .cursorrules
 _*.ipynb
-cache/
 
 # pastas vazias
-db/*
-!db/.gitkeep
+db/
 tmp/
-logs/*
-!logs/.gitkeep
-
+cache/
 
 # front
 node_modules/
