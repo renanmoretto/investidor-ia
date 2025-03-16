@@ -55,7 +55,9 @@ def analyze(ticker: str) -> BaseAgentOutput:
     4. Monitorar riscos e oportunidades mencionados nas notícias
     5. Acompanhar declarações importantes da administração
 
-    No final, você deve fornecer uma síntese objetiva em 3-5 frases sobre o sentimento geral das notícias e o impacto potencial no curto e médio prazo.
+    ## SUA ANÁLISE
+    - Resuma cada notícia lida em poucas frases
+    - Ao final, você deve fornecer uma conclusão objetiva em 3-5 frases sobre o sentimento geral das notícias e o impacto potencial no curto e médio prazo.
 
     ## DIRETRIZES IMPORTANTES
     - Mantenha objetividade na análise
