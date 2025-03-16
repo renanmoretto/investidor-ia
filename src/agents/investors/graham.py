@@ -22,6 +22,8 @@ def analyze(
     stock_details = stocks.details(ticker)
     company_name = stocks.name(ticker)
     segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    multiples = stocks.multiples(ticker)
+    lastest_multiples = multiples[0]
     dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
@@ -36,8 +38,8 @@ def analyze(
             .to_dicts()
         )
         # tira dados do ano atual pra nao poluir a análise do AI
-        dividends_by_year = [d for d in _dividends_by_year if d['ano'] != today.year]
-        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+        dividends_by_year = [d for d in _dividends_by_year if d['ano'] < today.year]
+        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] < today.year]
     else:
         dividends_by_year = []
         dividends_growth_by_year = []
@@ -46,14 +48,14 @@ def analyze(
 
     classic_criteria = {
         'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
-        'preco_sobre_lucro': stock_details.get('p_l', float('nan')),
-        'preco_sobre_lucro_abaixo_15x': stock_details.get('p_l', float('nan')) < 15,
-        'preco_sobre_valor_patrimonial': stock_details.get('p_vp', float('nan')),
-        'preco_sobre_valor_patrimonial_abaixo_1.5x': stock_details.get('p_vp', float('nan')) < 1.5,
-        'divida_bruta': stock_details.get('div_bruta', float('nan')),
-        'patrimonio_liquido': stock_details.get('patrim_liq', float('nan')),
-        'divida_menor_que_patrimonio_liquido': stock_details.get('div_liq', float('nan'))
-        < stock_details.get('patrim_liq', float('nan')),
+        'preco_sobre_lucro': lastest_multiples.get('p_l', float('nan')),
+        'preco_sobre_lucro_abaixo_15x': lastest_multiples.get('p_l', float('nan')) < 15,
+        'preco_sobre_valor_patrimonial': lastest_multiples.get('p_vp', float('nan')),
+        'preco_sobre_valor_patrimonial_abaixo_1.5x': lastest_multiples.get('p_vp', float('nan')) < 1.5,
+        'divida_bruta': stock_details.get('divida_bruta', float('nan')),
+        'patrimonio_liquido': stock_details.get('patrimonio_liquido', float('nan')),
+        'divida_menor_que_patrimonio_liquido': stock_details.get('divida_liquida', float('nan'))
+        < stock_details.get('patrimonio_liquido', float('nan')),
         'crescimento_dividendos_anuais': dividends_growth_by_year,
         'lucro_liquido_positivo_nos_ultimos_5_anos': all([d['lucro_liquido'] > 0 for d in dre_year]),
         'cagr_5y_receita_liq': cagr_5y_receita_liq,

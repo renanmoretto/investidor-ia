@@ -235,3 +235,24 @@ def payouts(ticker: str) -> list[dict]:
     payout_values = [d['value'] for d in r_json['chart']['series']['percentual']]
 
     return [{'year': year, 'dividends': round(v / 100, 4)} for year, v in zip(years, payout_values) if v != 0]
+
+
+def dividends(ticker: str) -> list[dict]:
+    url = URL + f'/acao/companytickerprovents?ticker={ticker}&chartProventsType=2'
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    r = requests.get(url, headers=headers)
+    r.raise_for_status()
+    r_json = r.json()
+
+    return [
+        {
+            'data_com': d['ed'][-4:] + '-' + d['ed'][3:5] + '-' + d['ed'][:2],
+            'data_pagamento': d['pd'][-4:] + '-' + d['pd'][3:5] + '-' + d['pd'][:2],
+            'valor': d['v'],
+        }
+        for d in r_json['assetEarningsModels']
+    ]

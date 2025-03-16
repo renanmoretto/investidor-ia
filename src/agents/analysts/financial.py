@@ -33,8 +33,8 @@ def analyze(ticker: str) -> str:
             .to_dicts()
         )
         # tira dados do ano atual pra nao poluir a análise do AI
-        dividends_by_year = [d for d in _dividends_by_year if d['ano'] != today.year]
-        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+        dividends_by_year = [d for d in _dividends_by_year if d['ano'] < today.year]
+        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] < today.year]
     else:
         dividends_by_year = []
         dividends_growth_by_year = []

@@ -51,7 +51,8 @@ def multiples(ticker: str) -> dict:
 
 @cache_it
 def dividends(ticker: str) -> list[dict]:
-    return fundamentus.proventos(ticker)
+    # return fundamentus.proventos(ticker)
+    return statusinvest.dividends(ticker)
 
 
 @cache_it

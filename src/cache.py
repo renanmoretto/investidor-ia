@@ -10,7 +10,7 @@ cache = diskcache.Cache(str(CACHE_DIR))
 
 def cache_it(
     func: Callable,
-    expire: int = 60 * 15,  # 15 min
+    expire: int = 60 * 5,  # 5 min
 ) -> Callable:
     def wrapper(*args, **kwargs):
         key = f'{func.__name__}:{args}:{kwargs}'
