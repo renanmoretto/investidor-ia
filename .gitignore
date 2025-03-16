@@ -30,6 +30,7 @@ staticfiles/
 .cursor
 .cursorrules
 _*.ipynb
+cache/
 
 # pastas vazias
 db/*

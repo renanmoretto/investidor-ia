@@ -1,28 +1,26 @@
 from typing import Callable, Any
+from pathlib import Path
+
+import diskcache
 
 
-class Cache:
-    def __init__(self):
-        self.cache = {}
-
-    def get(self, key: str) -> Any:
-        return self.cache.get(key)
-
-    def set(self, key: str, value: Any):
-        self.cache[key] = value
+CACHE_DIR = Path(__file__).parent.parent / 'cache'
+CACHE_DIR.mkdir(exist_ok=True, parents=True)
 
 
-cache = Cache()
+cache = diskcache.Cache(str(CACHE_DIR))
 
 
-def cache_it(func: Callable) -> Callable:
+def cache_it(
+    func: Callable,
+    expire: int = 60 * 30,  # 15 minutes
+) -> Callable:
     def wrapper(*args, **kwargs):
         key = f'{func.__name__}:{args}:{kwargs}'
-        cached_value = cache.get(key)
-        if cached_value:
-            return cached_value
-        result = func(*args, **kwargs)
-        cache.set(key, result)
+        result = cache.get(key)
+        if result is None:
+            result = func(*args, **kwargs)
+            cache.set(key, result, expire=expire)
         return result
 
     return wrapper
