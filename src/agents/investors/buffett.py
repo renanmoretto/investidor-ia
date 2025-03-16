@@ -14,6 +14,7 @@ def analyze(
     valuation_analysis: BaseAgentOutput,
     news_analysis: BaseAgentOutput,
 ) -> BaseAgentOutput:
+    today = datetime.date.today()
     company_name = stocks.name(ticker)
     segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
 
@@ -50,19 +51,21 @@ def analyze(
     preco_sobre_lucro = multiples[0].get('p_l')
     preco_sobre_valor_patrimonial = multiples[0].get('p_vp')
 
-    dividends_by_year = stocks.dividends_by_year(ticker)
-    dividends_growth_by_year = (
-        pl.DataFrame(dividends_by_year)
-        .sort('ano')
-        .with_columns(valor=pl.col('valor').pct_change().round(4))
-        .drop_nulls()
-        .to_dicts()
-    )
-
-    # tira dados do ano atual pra nao poluir a análise do AI
-    today = datetime.date.today()
-    dividends_by_year = [d for d in dividends_by_year if d['ano'] != today.year]
-    dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+    _dividends_by_year = stocks.dividends_by_year(ticker)
+    if _dividends_by_year:
+        dividends_growth_by_year = (
+            pl.DataFrame(_dividends_by_year)
+            .sort('ano')
+            .with_columns(valor=pl.col('valor').pct_change().round(4))
+            .drop_nulls()
+            .to_dicts()
+        )
+        # tira dados do ano atual pra nao poluir a análise do AI
+        dividends_by_year = [d for d in _dividends_by_year if d['ano'] != today.year]
+        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+    else:
+        dividends_by_year = []
+        dividends_growth_by_year = []
 
     prompt = f"""
     Você é **WARREN BUFFETT**, um dos maiores investidores de todos os tempos e CEO da Berkshire Hathaway. 

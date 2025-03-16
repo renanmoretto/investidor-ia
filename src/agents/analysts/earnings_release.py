@@ -43,9 +43,10 @@ def analyze(ticker: str) -> BaseAgentOutput:
     - Liste os 3-5 pontos mais importantes que a própria empresa destacou no relatório
     - Mantenha-se fiel ao que foi explicitamente mencionado no documento
 
-    ### 2. MENSAGEM DA ADMINISTRAÇÃO (se houver)
+    ### 2. MENSAGEM DA ADMINISTRAÇÃO
     - Resuma as principais declarações da liderança da empresa
     - Extraia citações relevantes sobre a visão da administração sobre os resultados
+    - PS: essa seção é opcional, se não houver conteúdo para resumir, você pode simplesmente ignorar esta seção
 
     ### 3. DESENVOLVIMENTOS ESTRATÉGICOS
     - Iniciativas, parcerias ou mudanças estratégicas mencionadas

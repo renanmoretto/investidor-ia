@@ -26,17 +26,21 @@ def analyze(
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
 
-    dividends_by_year = stocks.dividends_by_year(ticker)
-    dividends_growth_by_year = (
-        pl.DataFrame(dividends_by_year)
-        .sort('ano')
-        .with_columns(valor=pl.col('valor').pct_change().round(4))
-        .drop_nulls()
-        .to_dicts()
-    )
-    # tira dados do ano atual pra nao poluir a análise do AI
-    dividends_by_year = [d for d in dividends_by_year if d['ano'] != today.year]
-    dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+    _dividends_by_year = stocks.dividends_by_year(ticker)
+    if _dividends_by_year:
+        dividends_growth_by_year = (
+            pl.DataFrame(_dividends_by_year)
+            .sort('ano')
+            .with_columns(valor=pl.col('valor').pct_change().round(4))
+            .drop_nulls()
+            .to_dicts()
+        )
+        # tira dados do ano atual pra nao poluir a análise do AI
+        dividends_by_year = [d for d in _dividends_by_year if d['ano'] != today.year]
+        dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+    else:
+        dividends_by_year = []
+        dividends_growth_by_year = []
 
     balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
 
