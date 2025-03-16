@@ -12,10 +12,13 @@ st.title('Configurações')
 st.divider()
 
 
-def _get_api_key(api_name):
-    with open(os.path.join(DB_DIR, 'api_keys.json'), 'r') as f:
-        api_keys = json.load(f)
-    return api_keys.get(api_name)
+def _get_api_key(api_name) -> str | None:
+    try:
+        with open(os.path.join(DB_DIR, 'api_keys.json'), 'r') as f:
+            api_keys = json.load(f)
+        return api_keys.get(api_name)
+    except FileNotFoundError:
+        return None
 
 
 # Input para API KEY do Gemini
