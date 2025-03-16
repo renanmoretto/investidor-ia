@@ -23,13 +23,16 @@ def analyze(ticker: str) -> str:
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
     dividends_by_year = stocks.dividends_by_year(ticker)
-    dividends_growth = (
+    dividends_growth_by_year = (
         pl.DataFrame(dividends_by_year)
-        .sort('year')
+        .sort('ano')
         .with_columns(valor=pl.col('valor').pct_change().round(4))
         .drop_nulls()
         .to_dicts()
     )
+    # tira dados do ano atual pra nao poluir a análise do AI
+    dividends_by_year = [d for d in dividends_by_year if d['ano'] != today.year]
+    dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
 
     prompt = f"""
     Você é um analista financeiro especializado em análise fundamentalista de demonstrações financeiras.
@@ -109,7 +112,7 @@ def analyze(ticker: str) -> str:
     - cagr_5y_receita_liq: {cagr_5y_receita_liq}
     - cagr_5y_lucro_liq: {cagr_5y_lucro_liq}
     - dividends_by_year: {dividends_by_year}
-    - dividends_growth: {dividends_growth}
+    - dividends_growth_by_year: {dividends_growth_by_year}
 
 
     """

@@ -1,7 +1,6 @@
-from typing import Any
+import datetime
 
 import polars as pl
-import pandas as pd
 
 from src.llm import ask
 from src.agents.base import BaseAgentOutput
@@ -51,19 +50,19 @@ def analyze(
     preco_sobre_lucro = multiples[0].get('p_l')
     preco_sobre_valor_patrimonial = multiples[0].get('p_vp')
 
-    stock_dividends = stocks.dividends(ticker)
-    dividends_by_year = (
-        pl.DataFrame(stock_dividends)
-        .with_columns(year=pl.col('data_pagamento').str.slice(0, 4).cast(pl.Int64))
-        .group_by('year')
-        .agg(pl.col('valor').sum().round(4))
-        .sort('year', descending=True)
-        .to_pandas()
-        .set_index('year')['valor']
-        .to_dict()
+    dividends_by_year = stocks.dividends_by_year(ticker)
+    dividends_growth_by_year = (
+        pl.DataFrame(dividends_by_year)
+        .sort('ano')
+        .with_columns(valor=pl.col('valor').pct_change().round(4))
+        .drop_nulls()
+        .to_dicts()
     )
 
-    dividends_growth_by_year = pd.Series(dividends_by_year).sort_index().pct_change().fillna(0)
+    # tira dados do ano atual pra nao poluir a análise do AI
+    today = datetime.date.today()
+    dividends_by_year = [d for d in dividends_by_year if d['ano'] != today.year]
+    dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
 
     prompt = f"""
     Você é **WARREN BUFFETT**, um dos maiores investidores de todos os tempos e CEO da Berkshire Hathaway. 
@@ -93,6 +92,7 @@ def analyze(
     - Condições que poderiam mudar sua análise no futuro
 
     ## **IMPORTANTE**  
+    - Sua análise deve ser completa, longa, bem-escrita e detalhada, com pontos importantes e suas opiniões sobre os dados e a empresa.
     - Mantenha o tom **calmo, racional e fundamentado**, como Warren Buffett sempre faz.  
     - **Evite especulações e previsões otimistas** sem base concreta.  
     - **Foque em negócios de qualidade**, não apenas em números baratos.  

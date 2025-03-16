@@ -64,9 +64,14 @@ def dividends_by_year(ticker: str) -> list[dict]:
             yearly_dividends[year] = 0
         yearly_dividends[year] += dividend['valor']
 
-    return [{'year': year, 'valor': round(value, 8)} for year, value in sorted(yearly_dividends.items())]
+    return [{'ano': year, 'valor': round(value, 8)} for year, value in sorted(yearly_dividends.items())]
 
 
 @cache_it
 def screener():
     return statusinvest.screener()
+
+
+@cache_it
+def payouts(ticker: str) -> list[dict]:
+    return statusinvest.payouts(ticker)

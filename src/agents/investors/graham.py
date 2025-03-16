@@ -1,5 +1,4 @@
 import datetime
-from typing import Any
 
 import polars as pl
 
@@ -26,14 +25,19 @@ def analyze(
     dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
+
     dividends_by_year = stocks.dividends_by_year(ticker)
-    dividends_growth = (
+    dividends_growth_by_year = (
         pl.DataFrame(dividends_by_year)
-        .sort('year')
+        .sort('ano')
         .with_columns(valor=pl.col('valor').pct_change().round(4))
         .drop_nulls()
         .to_dicts()
     )
+    # tira dados do ano atual pra nao poluir a análise do AI
+    dividends_by_year = [d for d in dividends_by_year if d['ano'] != today.year]
+    dividends_growth_by_year = [d for d in dividends_growth_by_year if d['ano'] != today.year]
+
     balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
 
     classic_criteria = {
@@ -46,7 +50,7 @@ def analyze(
         'patrimonio_liquido': stock_details.get('patrim_liq', float('nan')),
         'divida_menor_que_patrimonio_liquido': stock_details.get('div_liq', float('nan'))
         < stock_details.get('patrim_liq', float('nan')),
-        'crescimento_dividendos_anuais': dividends_growth,
+        'crescimento_dividendos_anuais': dividends_growth_by_year,
         'lucro_liquido_positivo_nos_ultimos_5_anos': all([d['lucro_liquido'] > 0 for d in dre_year]),
         'cagr_5y_receita_liq': cagr_5y_receita_liq,
         'cagr_5y_lucro_liq': cagr_5y_lucro_liq,
@@ -67,36 +71,6 @@ def analyze(
     - Você VALORIZA a estabilidade e consistência acima do crescimento acelerado
     - Você EXIGE evidências concretas nos números, não histórias ou narrativas
 
-    ## EMPRESA A SER ANALISADA
-    Nome: {company_name}
-    Ticker: {ticker}
-    Setor: {segment}
-
-    ## OPINIÃO DO ANALISTA SOBRE O ÚLTIMO EARNINGS RELEASE
-    Sentimento: {earnings_release_analysis.sentiment}
-    Confiança: {earnings_release_analysis.confidence}
-    Análise: {earnings_release_analysis.content}
-
-    ## OPINIÃO DO ANALISTA SOBRE OS DADOS FINANCEIROS DA EMPRESA
-    Sentimento: {financial_analysis.sentiment}
-    Confiança: {financial_analysis.confidence}
-    Análise: {financial_analysis.content}
-
-    ## OPINIÃO DO ANALISTA SOBRE O VALUATION DA EMPRESA
-    Sentimento: {valuation_analysis.sentiment}
-    Confiança: {valuation_analysis.confidence}
-    Análise: {valuation_analysis.content}
-
-    ## OPINIÃO DO ANALISTA SOBRE AS NOTÍCIAS DA EMPRESA
-    Sentimento: {news_analysis.sentiment}
-    Confiança: {news_analysis.confidence}
-    Análise: {news_analysis.content}
-
-    ## DADOS FINANCEIROS DISPONÍVEIS
-    {dre_year}
-
-    ## CRITÉRIOS CLÁSSICOS CALCULADOS
-    {classic_criteria}
 
     ## SUA TAREFA
     Analise esta empresa como Benjamin Graham faria, aplicando rigorosamente seus critérios de investimento.
@@ -150,9 +124,8 @@ def analyze(
     - Justificativa baseada estritamente em seus princípios de investimento
     - Condições que poderiam mudar sua análise no futuro
 
-    ---
-
     ## IMPORTANTE
+    - Sua análise deve ser completa, longa, bem-escrita e detalhada, com pontos importantes e suas opiniões sobre os dados e a empresa.
     - Mantenha o tom formal, metódico e conservador característico de Benjamin Graham
     - Seja cético quanto a projeções otimistas e tendências de curto prazo
     - Enfatize a importância da margem de segurança em todas as suas considerações
@@ -169,6 +142,40 @@ def analyze(
         "sentiment": "Seu sentimento sobre a análise, você deve escolher entre 'BULLISH', 'BEARISH', 'NEUTRAL'",
         "confidence": "um valor entre 0 e 100, que representa sua confiança na análise",
     }}
+
+    ----
+
+    ## Dado o contexto, analise a empresa abaixo.
+    Nome: {company_name}
+    Ticker: {ticker}
+    Setor: {segment}
+
+    ## OPINIÃO DO ANALISTA SOBRE O ÚLTIMO EARNINGS RELEASE
+    Sentimento: {earnings_release_analysis.sentiment}
+    Confiança: {earnings_release_analysis.confidence}
+    Análise: {earnings_release_analysis.content}
+
+    ## OPINIÃO DO ANALISTA SOBRE OS DADOS FINANCEIROS DA EMPRESA
+    Sentimento: {financial_analysis.sentiment}
+    Confiança: {financial_analysis.confidence}
+    Análise: {financial_analysis.content}
+
+    ## OPINIÃO DO ANALISTA SOBRE O VALUATION DA EMPRESA
+    Sentimento: {valuation_analysis.sentiment}
+    Confiança: {valuation_analysis.confidence}
+    Análise: {valuation_analysis.content}
+
+    ## OPINIÃO DO ANALISTA SOBRE AS NOTÍCIAS DA EMPRESA
+    Sentimento: {news_analysis.sentiment}
+    Confiança: {news_analysis.confidence}
+    Análise: {news_analysis.content}
+
+    ## DADOS FINANCEIROS DISPONÍVEIS
+    {dre_year}
+
+    ## CRITÉRIOS CLÁSSICOS CALCULADOS
+    {classic_criteria}
+
     """
     return ask(
         message=prompt,

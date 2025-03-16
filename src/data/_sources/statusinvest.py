@@ -107,7 +107,7 @@ def details(ticker: str) -> dict:
             return value
         return None
 
-    url = f'https://statusinvest.com.br/acoes/{ticker}'
+    url = URL + f'/acoes/{ticker}'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
@@ -189,7 +189,7 @@ def screener() -> list[dict]:
 
 
 def multiples(ticker: str) -> dict:
-    url = 'https://statusinvest.com.br/acao/indicatorhistoricallist'
+    url = URL + '/acao/indicatorhistoricallist'
     data = {'codes[]': ticker.lower(), 'time': 5, 'byQuarter': False, 'futureData': False}
 
     headers = {
@@ -219,3 +219,19 @@ def multiples(ticker: str) -> dict:
             entry[key] = data[key].get(year, float('nan'))
         transformed_data.append(entry)
     return transformed_data[::-1]
+
+
+def payouts(ticker: str) -> list[dict]:
+    url = URL + f'/acao/payoutresult?code={ticker}&type=2'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    r = requests.get(url, headers=headers)
+    r.raise_for_status()
+    r_json = r.json()
+
+    years = r_json['chart']['category']
+    payout_values = [d['value'] for d in r_json['chart']['series']['percentual']]
+
+    return [{'year': year, 'dividends': round(v / 100, 4)} for year, v in zip(years, payout_values) if v != 0]
