@@ -1,11 +1,8 @@
-from typing import Callable, Any
-from pathlib import Path
+from typing import Callable
 
 import diskcache
 
-
-CACHE_DIR = Path(__file__).parent.parent / 'cache'
-CACHE_DIR.mkdir(exist_ok=True, parents=True)
+from src.settings import CACHE_DIR
 
 
 cache = diskcache.Cache(str(CACHE_DIR))
@@ -13,7 +10,7 @@ cache = diskcache.Cache(str(CACHE_DIR))
 
 def cache_it(
     func: Callable,
-    expire: int = 60 * 30,  # 15 minutes
+    expire: int = 60 * 15,  # 15 min
 ) -> Callable:
     def wrapper(*args, **kwargs):
         key = f'{func.__name__}:{args}:{kwargs}'
