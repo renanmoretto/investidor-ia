@@ -176,14 +176,12 @@ if __name__ == '__main__':
         print('\nEscolha o investidor:')
         print('1 - Warren Buffett')
         print('2 - Benjamin Graham')
-        print('3 - Peter Lynch')
-        print('4 - Luiz Barsi')
+        print('3 - Luiz Barsi')
         investor_choice = input('\nOpção: ')
         investor_map = {
             '1': 'buffett',
             '2': 'graham',
-            '3': 'lynch',
-            '4': 'barsi',
+            '3': 'barsi',
         }
         investor_name = investor_map.get(investor_choice)
 
