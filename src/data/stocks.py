@@ -57,9 +57,11 @@ def dividends(ticker: str) -> list[dict]:
 
 @cache_it
 def dividends_by_year(ticker: str) -> list[dict]:
-    stick_dividends = dividends(ticker)
+    stock_dividends = dividends(ticker)
     yearly_dividends = {}
-    for dividend in stick_dividends:
+    for dividend in stock_dividends:
+        if dividend['data_pagamento'] == '----':
+            continue
         year = int(dividend['data_pagamento'][:4])
         if year not in yearly_dividends:
             yearly_dividends[year] = 0
