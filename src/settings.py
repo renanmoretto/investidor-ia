@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 
-def _get_api_key(provider: str) -> str | None:
+def get_api_key(provider: str) -> str | None:
     try:
         with open(DB_DIR / 'api_keys.json', 'r') as f:
             api_keys = json.load(f)
@@ -20,7 +20,7 @@ DB_DIR = PROJECT_DIR / 'db'
 DB_DIR.mkdir(exist_ok=True, parents=True)
 
 # api keys
-GEMINI_API_KEY = _get_api_key('gemini')
+GEMINI_API_KEY = get_api_key('gemini')
 
 # investors
 INVESTORS = {
@@ -32,4 +32,4 @@ INVESTORS = {
 
 def reload_api_keys():
     global GEMINI_API_KEY
-    GEMINI_API_KEY = _get_api_key('gemini')
+    GEMINI_API_KEY = get_api_key('gemini')
