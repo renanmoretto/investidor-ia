@@ -101,6 +101,8 @@ def details(ticker: str) -> dict:
             if '%' in value_s:
                 mult = 0.01
             try:
+                if value_s == '-':
+                    return float('nan')
                 value = float(value_s.replace('.', '').replace(',', '.').replace('%', '')) * mult
             except ValueError as _:
                 return value_s
