@@ -18,7 +18,7 @@ from src.agents.investors import (
     graham,
     barsi,
 )
-from src.settings import DB_DIR, INVESTORS, GEMINI_API_KEY, reload_api_keys
+from src.settings import DB_DIR, INVESTORS, GEMINI_API_KEY
 from pages._utils import Report, display_report
 
 
@@ -130,7 +130,9 @@ def _save_report(report: Report):
 st.title('Gerar Relatório')
 
 if not GEMINI_API_KEY:
-    st.error('Não foi encontrada uma chave de API para o Gemini')
+    st.error(
+        'Não foi encontrada uma chave de API para o Gemini. Se você já inseriu uma chave de API, dê um refresh na página.'
+    )
     st.page_link('pages/settings.py', label='Acesse a página de configurações e insira sua chave de API')
     st.stop()
 
