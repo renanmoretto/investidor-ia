@@ -6,6 +6,7 @@ import streamlit as st
 
 
 protected_pages = [
+    st.Page('pages/chat.py', title='Chat'),
     st.Page('pages/generate.py', title='Gerar Relatório'),
     st.Page('pages/reports.py', title='Meus Relatórios'),
     st.Page('pages/settings.py', title='Configurações'),

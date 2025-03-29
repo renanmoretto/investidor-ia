@@ -3,12 +3,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-# class BaseAgentOutput(BaseModel):
-#     content: str
-#     sentiment: Literal['BULLISH', 'BEARISH', 'NEUTRAL']
-#     confidence: int
-
-
 class BaseAgentOutput(BaseModel):
     content: str = Field(
         ...,
