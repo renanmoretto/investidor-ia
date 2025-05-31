@@ -56,7 +56,7 @@ O processo segue o seguinte fluxo:
     O aplicativo deve abrir automaticamente  no navegador, se não abrir, entre no link: http://localhost:8501/
 
 
-6. Vá na página de Configurações, insira sua api key do Gemini, clique em salvar, dê um refresh na página e pronto, só usar.
+6. Vá na página de Configurações, insira sua api key, clique em salvar, dê um refresh na página e pronto, só usar.
 
 ### Se você tem Git e Python
 
@@ -123,7 +123,6 @@ Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para m
 
 ## TODOs
 * Mais investidores (Peter Lynch, Munger, Ackman, etc)
-* Opção de LLMs (OpenAI, Deepseek, Anthropic, etc) 
 * Analista técnico (price action e gráficos)
 * Analista macro
 * Export do relatório para PDF
