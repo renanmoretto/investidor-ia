@@ -1,37 +1,40 @@
 from textwrap import dedent
 
 from agno.agent import Agent
-from agno.models.google.gemini import Gemini
+from agno.storage.sqlite import SqliteStorage
+from agno.memory.v2.memory import Memory
+from agno.memory.v2.db.sqlite import SqliteMemoryDb
 from agno.tools.duckduckgo import DuckDuckGoTools
+from agno.tools.reasoning import ReasoningTools
 
 from src.utils import get_model
 from src.chat.tools import StocksTools
-from src.settings import get_api_key
-from src.agents.investors.barsi import DESCRIPTION as barsi_description
-from src.agents.investors.buffett import DESCRIPTION as buffet_description
-from src.agents.investors.graham import DESCRIPTION as graham_description
+from src.settings import DB_DIR
+from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
+from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
+from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
 
-
-_API_KEY = get_api_key('gemini')
+storage = SqliteStorage(table_name='chat_agent_storage', db_file=DB_DIR / 'agents_db.db')
+memory = Memory(
+    model=get_model(),
+    db=SqliteMemoryDb(table_name='chat_agent_memory', db_file=DB_DIR / 'agents_db.db'),
+)
 
 
 def get_chat_agent(investor: str) -> Agent:
     match investor:
         case 'buffett':
-            description = buffet_description
+            system_prompt = buffet_system_prompt
         case 'barsi':
-            description = barsi_description
+            system_prompt = barsi_system_prompt
         case 'graham':
-            description = graham_description
+            system_prompt = graham_system_prompt
         case _:
             raise ValueError(f'Investor {investor} not found')
 
     return Agent(
-        model=get_model(),
-        tools=[StocksTools(), DuckDuckGoTools()],
-        show_tool_calls=False,
-        markdown=True,
-        description=description,
+        model=get_model(temperature=0.5),
+        system_message=system_prompt,
         instructions=dedent(
             """
             Comece analisando a pergunta do usuário e veja se você pode responder com os dados disponíveis.
@@ -40,4 +43,13 @@ def get_chat_agent(investor: str) -> Agent:
             Caso você use alguma função disponível, não informe ao usuário que você usou uma função, apenas responda a pergunta.
             """
         ),
+        tools=[ReasoningTools(think=True, analyze=True), StocksTools(), DuckDuckGoTools()],
+        show_tool_calls=True,
+        storage=storage,
+        memory=memory,
+        enable_agentic_memory=True,
+        enable_user_memories=True,
+        add_history_to_messages=True,
+        num_history_runs=20,
+        markdown=True,
     )

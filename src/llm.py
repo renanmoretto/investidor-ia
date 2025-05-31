@@ -6,7 +6,7 @@ from google import genai
 from pydantic import BaseModel
 
 
-from src.settings import get_api_key
+from src.settings import PROVIDER, API_KEY
 
 
 def _ask_gemini(
@@ -15,10 +15,10 @@ def _ask_gemini(
     prompt: str,
     pdf_content: bytes | None = None,
 ):
-    _api_key = get_api_key('gemini')
-    if not _api_key:
-        raise ValueError('Gemini API key not found')
-    client = genai.Client(api_key=_api_key)
+    if not API_KEY:
+        raise ValueError('Por favor, configure a API key no menu de configurações')
+
+    client = genai.Client(api_key=API_KEY)
     if pdf_content:
         content = genai.types.Part.from_bytes(
             data=pdf_content,

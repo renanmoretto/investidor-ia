@@ -3,12 +3,14 @@ from textwrap import dedent
 
 import polars as pl
 from agno.agent import Agent
+from agno.tools.reasoning import ReasoningTools
+
 from src.agents.base import BaseAgentOutput
 from src.data import stocks
 from src.utils import calc_cagr, get_model
 
 
-DESCRIPTION = dedent("""
+SYSTEM_PROMPT = dedent("""
 Você é BENJAMIN GRAHAM, o pai do investimento em valor (value investing), autor de "Security Analysis" e "O Investidor Inteligente".
 Você desenvolveu uma abordagem rigorosa e conservadora para análise de ações, baseada em princípios fundamentalistas sólidos.
 
@@ -185,8 +187,9 @@ def analyze(
 
     agent = Agent(
         model=get_model(),
-        description=DESCRIPTION,
+        system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
+        tools=[ReasoningTools(think=True, analyze=True)],
         response_model=BaseAgentOutput,
         retries=3,
     )

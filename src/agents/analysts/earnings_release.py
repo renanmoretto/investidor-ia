@@ -1,13 +1,16 @@
 import requests
+import io
 
-from src.llm import ask
+from pypdf import PdfReader
+from agno.agent import Agent
+
 from src.agents.base import BaseAgentOutput
-
 from src.data import stocks
 from src.data._sources import fundamentus
+from src.utils import get_model
 
 
-def _get_earnings_release(ticker: str) -> bytes:
+def _get_earnings_release_url(ticker: str) -> str:
     results_trimestrais = fundamentus.resultados_trimestrais(ticker)
     download_link = results_trimestrais[0]['download_link']
     if download_link is None:
@@ -16,18 +19,26 @@ def _get_earnings_release(ticker: str) -> bytes:
     if download_link is None:
         raise ValueError('Não foi possível encontrar o earnings release')
 
-    r = requests.get(download_link)
-    earnings_release_pdf_bytes = r.content
-    return earnings_release_pdf_bytes
+    return download_link
+
+
+def _get_earnings_release_text(ticker: str) -> str:
+    release_url = _get_earnings_release_url(ticker)
+    content = requests.get(release_url).content
+    reader = PdfReader(io.BytesIO(content))
+    full_text = ''
+    for page in reader.pages:
+        full_text += page.extract_text()
+    return full_text
 
 
 def analyze(ticker: str) -> BaseAgentOutput:
     company_name = stocks.name(ticker)
     try:
-        release_pdf_bytes = _get_earnings_release(ticker)
+        earnings_release_text = _get_earnings_release_text(ticker)
     except Exception as e:
-        print(f'Link de earnings release não encontrado: {e}')
-        return BaseAgentOutput(content='Link de earnings release não encontrado', sentiment='NEUTRAL', confidence=0)
+        print(f'Erro ao baixar o earnings release: {e}')
+        return BaseAgentOutput(content='Erro ao baixar o earnings release', sentiment='NEUTRAL', confidence=0)
 
     prompt = f"""
     Você é um analista especializado em extrair e resumir informações relevantes de relatórios financeiros.
@@ -82,15 +93,16 @@ def analyze(ticker: str) -> BaseAgentOutput:
     """
 
     try:
-        response = ask(
-            message=prompt,
-            model='gemini-1.5-flash-8b',
-            temperature=0.3,
-            pdf_content=release_pdf_bytes,
-            model_output=BaseAgentOutput,
+        agent = Agent(
+            system_message=prompt,
+            model=get_model(temperature=0.3),
+            response_model=BaseAgentOutput,
             retries=3,
         )
-        return response
+        response = agent.run(
+            f'Analise o earnings release da empresa {company_name} - {ticker}:\n\n{earnings_release_text}'
+        )
+        return response.content
     except Exception as e:
         print(f'Erro ao analisar o earnings release: {e}')
         return BaseAgentOutput(content='Erro ao analisar o earnings release', sentiment='NEUTRAL', confidence=0)

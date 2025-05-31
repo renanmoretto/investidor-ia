@@ -2,11 +2,21 @@ import json
 from pathlib import Path
 
 
-def get_api_key(provider: str) -> str | None:
+def get_llm_config() -> dict[str, str] | None:
     try:
+        # provider
+        with open(DB_DIR / 'model.json', 'r') as f:
+            model = json.load(f)
+
+        # api key
         with open(DB_DIR / 'api_keys.json', 'r') as f:
             api_keys = json.load(f)
-        return api_keys.get(provider)
+
+        return {
+            'provider': model['provider'],
+            'model': model['model'],
+            'api_key': api_keys.get(model['provider']),
+        }
     except FileNotFoundError:
         return None
 
@@ -19,8 +29,11 @@ CACHE_DIR.mkdir(exist_ok=True, parents=True)
 DB_DIR = PROJECT_DIR / 'db'
 DB_DIR.mkdir(exist_ok=True, parents=True)
 
-# api keys
-GEMINI_API_KEY = get_api_key('gemini')
+# LLMs
+llm_config = get_llm_config()
+PROVIDER = llm_config['provider']
+MODEL = llm_config['model']
+API_KEY = llm_config['api_key']
 
 # investors
 INVESTORS = {
@@ -30,6 +43,9 @@ INVESTORS = {
 }
 
 
-def reload_api_keys():
-    global GEMINI_API_KEY
-    GEMINI_API_KEY = get_api_key('gemini')
+def reload_llm_config():
+    global PROVIDER, MODEL, API_KEY
+    llm_config = get_llm_config()
+    PROVIDER = llm_config['provider']
+    MODEL = llm_config['model']
+    API_KEY = llm_config['api_key']

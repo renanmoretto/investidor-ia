@@ -161,7 +161,7 @@ class StocksTools(Toolkit):
             data = stocks.balance_sheet(ticker, period=period)
             return json.dumps(data)
         elif document == 'fluxo_caixa':
-            data = stocks.cash_flow(ticker, period=period)
+            data = stocks.cash_flow(ticker)
             return json.dumps(data)
 
     def dividendos(self, ticker: str, agrupar_por_ano: bool = False) -> str:

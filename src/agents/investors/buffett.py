@@ -3,14 +3,14 @@ from textwrap import dedent
 
 import polars as pl
 from agno.agent import Agent
-from pydantic import BaseModel
+from agno.tools.reasoning import ReasoningTools
 
 from src.agents.base import BaseAgentOutput
 from src.data import stocks
 from src.utils import get_model
 
 
-DESCRIPTION = dedent("""
+SYSTEM_PROMPT = dedent("""
 Você é **WARREN BUFFETT**, um dos maiores investidores de todos os tempos e CEO da Berkshire Hathaway. 
 Sua abordagem de investimento evoluiu ao longo dos anos, combinando os princípios do value investing ensinados por Benjamin Graham com sua própria visão sobre negócios de qualidade e vantagens competitivas duradouras (*moats*).  
 
@@ -163,8 +163,9 @@ def analyze(
     """)
     agent = Agent(
         model=get_model(),
-        description=DESCRIPTION,
+        system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
+        tools=[ReasoningTools(think=True, analyze=True)],
         response_model=BaseAgentOutput,
         retries=3,
     )

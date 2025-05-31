@@ -1,6 +1,7 @@
 import polars as pl
+from agno.agent import Agent
 
-from src.llm import ask
+from src.utils import get_model
 from src.agents.base import BaseAgentOutput
 from src.data import stocks
 
@@ -100,14 +101,14 @@ def analyze(ticker: str) -> str:
     """
 
     try:
-        response = ask(
-            message=prompt,
-            model='gemini-2.0-flash',
-            temperature=0.3,
-            model_output=BaseAgentOutput,
+        agent = Agent(
+            system_message=prompt,
+            model=get_model(temperature=0.3),
+            response_model=BaseAgentOutput,
             retries=3,
         )
-        return response
+        response = agent.run('Faça uma análise do valuation')
+        return response.content
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')
         return BaseAgentOutput(content='Erro ao gerar análise.', sentiment='NEUTRAL', confidence=0)

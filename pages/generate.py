@@ -18,8 +18,13 @@ from src.agents.investors import (
     graham,
     barsi,
 )
-from src.settings import DB_DIR, INVESTORS, GEMINI_API_KEY
+from src.settings import DB_DIR, INVESTORS, PROVIDER, MODEL, API_KEY
 from pages._utils import Report, display_report
+
+
+if not PROVIDER or not MODEL or not API_KEY:
+    st.error('Por favor, configure o modelo e a chave de API no menu de configurações')
+    st.stop()
 
 
 st.set_page_config(layout='centered')
@@ -129,12 +134,6 @@ def _save_report(report: Report):
 
 st.title('Gerar Relatório')
 
-if not GEMINI_API_KEY:
-    st.error(
-        'Não foi encontrada uma chave de API para o Gemini. Se você já inseriu uma chave de API, dê um refresh na página.'
-    )
-    st.page_link('pages/settings.py', label='Acesse a página de configurações e insira sua chave de API')
-    st.stop()
 
 ticker = st.text_input('Ticker da ação')
 investor = st.selectbox('Investidor', list(INVESTORS.values()))

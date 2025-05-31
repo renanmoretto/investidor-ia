@@ -3,9 +3,10 @@ import fitz
 from agno.models.base import Model
 from agno.models.google.gemini import Gemini
 from agno.models.openai import OpenAIChat
+from agno.models.openrouter import OpenRouter
 
 
-from src.settings import get_api_key
+from src.settings import PROVIDER, MODEL, API_KEY
 
 
 def pdf_to_text(pdf_path: str) -> str:
@@ -27,10 +28,12 @@ def calc_cagr(data: dict, name: str, length: int = 5) -> float:
     return cagr
 
 
-def get_model(model_name: str = 'gemini-2.0-flash', provider: str = 'gemini', temperature: float = 0.3) -> Model:
-    if provider == 'gemini':
-        return Gemini(id=model_name, temperature=temperature, api_key=get_api_key('gemini'))
-    elif provider == 'openai':
-        return OpenAIChat(id=model_name, temperature=temperature, api_key=get_api_key('openai'))
+def get_model(temperature: float = 0.3) -> Model:
+    if PROVIDER == 'GOOGLE':
+        return Gemini(id=MODEL, temperature=temperature, api_key=API_KEY)
+    elif PROVIDER == 'OPENAI':
+        return OpenAIChat(id=MODEL, temperature=temperature, api_key=API_KEY)
+    elif PROVIDER == 'OPENROUTER':
+        return OpenRouter(id=MODEL, temperature=temperature, api_key=API_KEY)
     else:
-        raise ValueError(f'Modelo {model_name} não encontrado')
+        raise ValueError(f'Modelo {MODEL} não encontrado')
