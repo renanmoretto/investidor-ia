@@ -32,7 +32,7 @@ staticfiles/
 _*.ipynb
 
 # pastas vazias
-db/
+.db/
 tmp/
 cache/
 

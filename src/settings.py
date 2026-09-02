@@ -9,11 +9,19 @@ PROJECT_DIR = Path(__file__).parent.parent
 CACHE_DIR = PROJECT_DIR / 'cache'
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
 
-DB_DIR = PROJECT_DIR / 'db'
-DB_DIR.mkdir(exist_ok=True, parents=True)
+DB_DIR = PROJECT_DIR / '.db'
 
 MODEL_FILE = DB_DIR / 'model.json'
 API_KEYS_FILE = DB_DIR / 'api_keys.json'
+
+
+def ensure_db_dir() -> None:
+    if DB_DIR.exists():
+        logger.info('db dir found at %s', DB_DIR)
+        return
+    DB_DIR.mkdir(parents=True)
+    logger.info('db dir created at %s', DB_DIR)
+
 
 PROVIDERS = ['GOOGLE', 'OPENAI', 'OPENROUTER']
 DEFAULT_PROVIDER = 'GOOGLE'

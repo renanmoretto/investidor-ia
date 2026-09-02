@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent
 
-app = FastAPI(title='Investidor-IA')
+app = FastAPI(title='Investidor-IA', on_startup=[settings.ensure_db_dir])
 app.mount('/static', StaticFiles(directory=WEB_DIR / 'static'), name='static')
 
 templates = Jinja2Templates(directory=str(WEB_DIR / 'templates'))
