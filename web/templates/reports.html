@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Meus Relatórios - Investidor-IA{% endblock %}
+
+{% block content %}
+<h1>Meus Relatórios</h1>
+
+{% if not reports %}
+<p>Nenhum relatório encontrado.</p>
+{% else %}
+<ul class="report-list">
+  {% for report in reports %}
+  <li>
+    <a href="/reports/{{ report.id }}">{{ report.label }}</a>
+    <form method="post" action="/reports/{{ report.id }}/delete"
+          onsubmit="return confirm('Excluir este relatório?')">
+      <button type="submit" class="danger">Excluir</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

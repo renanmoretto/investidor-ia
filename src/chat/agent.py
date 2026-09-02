@@ -1,3 +1,4 @@
+import logging
 from textwrap import dedent
 
 from agno.agent import Agent
@@ -14,14 +15,12 @@ from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
 from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
 from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
 
-storage = SqliteStorage(table_name='chat_agent_storage', db_file=DB_DIR / 'agents_db.db')
-memory = Memory(
-    model=get_model(),
-    db=SqliteMemoryDb(table_name='chat_agent_memory', db_file=DB_DIR / 'agents_db.db'),
-)
+logger = logging.getLogger(__name__)
+
+DB_FILE = str(DB_DIR / 'agents_db.db')
 
 
-def get_chat_agent(investor: str) -> Agent:
+def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
     match investor:
         case 'buffett':
             system_prompt = buffet_system_prompt
@@ -32,7 +31,16 @@ def get_chat_agent(investor: str) -> Agent:
         case _:
             raise ValueError(f'Investor {investor} not found')
 
+    storage = SqliteStorage(table_name='chat_agent_storage', db_file=DB_FILE)
+    memory = Memory(
+        model=get_model(),
+        db=SqliteMemoryDb(table_name='chat_agent_memory', db_file=DB_FILE),
+    )
+
+    logger.info('chat agent created investor=%s session_id=%s', investor, session_id)
+
     return Agent(
+        session_id=session_id,
         model=get_model(temperature=0.5),
         system_message=system_prompt,
         instructions=dedent(

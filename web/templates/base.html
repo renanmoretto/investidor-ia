@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Investidor-IA{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="brand" href="/">Investidor-IA</a>
+      <a href="/chat">Chat</a>
+      <a href="/generate">Gerar Relatório</a>
+      <a href="/reports">Meus Relatórios</a>
+      <a href="/settings">Configurações</a>
+    </nav>
+  </header>
+
+  <main>
+    {% if not configured %}
+    <p class="alert">
+      Configure o provedor, o modelo e a chave de API em <a href="/settings">Configurações</a>.
+    </p>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Configurações - Investidor-IA{% endblock %}
+
+{% block content %}
+<h1>Configurações</h1>
+
+{% if saved %}<p class="success">Configurações salvas com sucesso.</p>{% endif %}
+
+<form method="post" action="/settings">
+  <h2>Provedor e Modelo</h2>
+
+  <label for="provider">Provedor</label>
+  <select id="provider" name="provider">
+    {% for p in providers %}
+    <option value="{{ p }}" {% if p == config.provider %}selected{% endif %}>{{ p }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="model">Modelo</label>
+  <input id="model" name="model" type="text" value="{{ config.model }}" placeholder="gemini-2.0-flash">
+
+  <h2>API Keys</h2>
+
+  <label for="google_key">GOOGLE API KEY</label>
+  <input id="google_key" name="google_key" type="password" value="{{ api_keys.GOOGLE }}">
+
+  <label for="openai_key">OPENAI API KEY</label>
+  <input id="openai_key" name="openai_key" type="password" value="{{ api_keys.OPENAI }}">
+
+  <label for="openrouter_key">OPENROUTER API KEY</label>
+  <input id="openrouter_key" name="openrouter_key" type="password" value="{{ api_keys.OPENROUTER }}">
+
+  <button type="submit">Salvar</button>
+</form>
+{% endblock %}

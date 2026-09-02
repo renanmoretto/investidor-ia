@@ -6,7 +6,7 @@ from google import genai
 from pydantic import BaseModel
 
 
-from src.settings import PROVIDER, API_KEY
+from src.settings import get_llm_config
 
 
 def _ask_gemini(
@@ -15,10 +15,11 @@ def _ask_gemini(
     prompt: str,
     pdf_content: bytes | None = None,
 ):
-    if not API_KEY:
+    api_key = get_llm_config()['api_key']
+    if not api_key:
         raise ValueError('Por favor, configure a API key no menu de configurações')
 
-    client = genai.Client(api_key=API_KEY)
+    client = genai.Client(api_key=api_key)
     if pdf_content:
         content = genai.types.Part.from_bytes(
             data=pdf_content,

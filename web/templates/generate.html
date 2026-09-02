@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Gerar Relatório - Investidor-IA{% endblock %}
+
+{% block content %}
+<h1>Gerar Relatório</h1>
+
+{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+
+<form method="post" action="/generate">
+  <label for="ticker">Ticker da ação</label>
+  <input id="ticker" name="ticker" type="text" placeholder="PETR4" autocomplete="off" required>
+
+  <label for="investor">Investidor</label>
+  <select id="investor" name="investor">
+    {% for key, name in INVESTORS.items() %}
+    <option value="{{ key }}">{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit" {% if not configured %}disabled{% endif %}>Gerar Relatório</button>
+</form>
+
+<p class="hint">A geração leva alguns minutos. Você pode acompanhar o progresso na próxima página.</p>
+{% endblock %}

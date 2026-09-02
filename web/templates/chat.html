@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Chat - Investidor-IA{% endblock %}
+
+{% block content %}
+<h1>Chat</h1>
+
+<div class="chat-toolbar">
+  <form method="post" action="/chat/investor">
+    <select name="investor" onchange="this.form.submit()">
+      {% for key, name in INVESTORS.items() %}
+      <option value="{{ key }}" {% if key == session.investor %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <form method="post" action="/chat/new">
+    <button type="submit">Novo chat</button>
+  </form>
+</div>
+
+<div id="messages" class="messages">
+  {% for message in session.messages %}
+  <div class="message {{ message.role }}">
+    <div class="markdown">{{ message.content | markdown | safe }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<form id="chat-form" class="chat-form">
+  <input id="message" name="message" type="text" placeholder="Digite uma mensagem" autocomplete="off" required
+         {% if not configured %}disabled{% endif %}>
+  <button type="submit" {% if not configured %}disabled{% endif %}>Enviar</button>
+</form>
+
+<script>
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('message');
+  const messages = document.getElementById('messages');
+
+  function addMessage(role, text) {
+    const el = document.createElement('div');
+    el.className = `message ${role}`;
+    const body = document.createElement('div');
+    body.className = 'streaming';
+    body.textContent = text;
+    el.appendChild(body);
+    messages.appendChild(el);
+    window.scrollTo(0, document.body.scrollHeight);
+    return body;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    input.disabled = true;
+    addMessage('user', message);
+    const target = addMessage('assistant', '');
+
+    const body = new FormData();
+    body.append('message', message);
+    const res = await fetch('/chat/send', { method: 'POST', body });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      target.textContent += decoder.decode(value, { stream: true });
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    // reload so the answer is rendered as markdown by the server
+    window.location.reload();
+  });
+</script>
+{% endblock %}

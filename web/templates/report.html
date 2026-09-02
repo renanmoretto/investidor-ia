@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ report.ticker }} - {{ report.investor_label }}{% endblock %}
+
+{% set analysts = report.data['analysts'] %}
+{% set investor = report.data['investor'] %}
+
+{% block content %}
+<p><a href="/reports">&larr; Meus Relatórios</a></p>
+
+<h1>{{ report.ticker }} - {{ report.investor_label }}</h1>
+<p class="hint">Gerado em {{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+
+{% for key, name in [
+  ('earnings_release', 'Earnings Release'),
+  ('financial', 'Financial'),
+  ('valuation', 'Valuation'),
+  ('news', 'News'),
+] %}
+{% set analysis = analysts[key] %}
+<details>
+  <summary>
+    Opinião do analista de {{ name }} -
+    <span class="sentiment {{ analysis['sentiment'] }}">{{ analysis['sentiment'] }}</span>
+  </summary>
+  <p>Confiança: {{ analysis['confidence'] }}%</p>
+  <div class="markdown">{{ analysis['content'] | markdown | safe }}</div>
+</details>
+{% endfor %}
+
+<h1>Sentimento: <span class="sentiment {{ investor['sentiment'] }}">{{ investor['sentiment'] }}</span></h1>
+<h1>Confiança: {{ investor['confidence'] }}%</h1>
+
+<div class="markdown">{{ investor['content'] | markdown | safe }}</div>
+
+<hr>
+<p class="disclaimer"><strong class="danger-text">Disclaimer:</strong></p>
+<p class="disclaimer">
+  Este relatório foi gerado por um sistema de Inteligência Artificial e NÃO constitui recomendação de investimento.
+  As análises apresentadas são meramente informativas e não devem ser utilizadas como única base para decisões de
+  investimento. Os desenvolvedores e o sistema não se responsabilizam por eventuais perdas ou ganhos decorrentes do uso
+  destas informações. Investimentos em renda variável envolvem riscos e podem resultar em perdas patrimoniais.
+</p>
+
+<form method="post" action="/reports/{{ report.id }}/delete"
+      onsubmit="return confirm('Excluir este relatório?')">
+  <button type="submit" class="danger">Excluir relatório</button>
+</form>
+{% endblock %}

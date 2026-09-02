@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Gerando relatório - Investidor-IA{% endblock %}
+
+{% block content %}
+<h1>Gerando relatório</h1>
+<p>{{ job.ticker }} - {{ INVESTORS.get(job.investor_name, job.investor_name) }}</p>
+
+<ul class="steps" id="steps">
+  {% for key, label in steps %}
+  <li data-step="{{ key }}"><span class="mark">·</span> {{ label }}</li>
+  {% endfor %}
+</ul>
+
+<p id="status">Iniciando...</p>
+
+<script>
+  const jobId = {{ job.id | tojson }};
+
+  async function poll() {
+    const res = await fetch(`/api/jobs/${jobId}`);
+    if (!res.ok) {
+      document.getElementById('status').textContent = 'Geração não encontrada.';
+      return;
+    }
+    const job = await res.json();
+
+    document.querySelectorAll('#steps li').forEach((li) => {
+      const step = li.dataset.step;
+      const mark = li.querySelector('.mark');
+      if (job.done_steps.includes(step)) {
+        li.className = 'done';
+        mark.textContent = '✓';
+      } else if (job.step === step) {
+        li.className = 'running';
+        mark.textContent = '→';
+      }
+    });
+
+    if (job.status === 'done') {
+      document.getElementById('status').textContent = 'Pronto! Redirecionando...';
+      window.location = `/reports/${job.report_id}`;
+      return;
+    }
+    if (job.status === 'error') {
+      const el = document.getElementById('status');
+      el.className = 'alert';
+      el.textContent = `Erro: ${job.error}`;
+      return;
+    }
+    document.getElementById('status').textContent = job.step_label || 'Processando...';
+    setTimeout(poll, 2000);
+  }
+
+  poll();
+</script>
+{% endblock %}
