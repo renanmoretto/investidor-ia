@@ -23,8 +23,8 @@ def ensure_db_dir() -> None:
     logger.info('db dir created at %s', DB_DIR)
 
 
-PROVIDERS = ['GOOGLE', 'OPENAI', 'OPENROUTER']
-DEFAULT_PROVIDER = 'GOOGLE'
+PROVIDERS = ['OPENAI', 'OPENROUTER', 'GEMINI', 'ANTHROPIC']
+DEFAULT_PROVIDER = 'OPENAI'
 DEFAULT_MODEL = ''
 
 INVESTORS = {

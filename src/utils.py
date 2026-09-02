@@ -3,6 +3,7 @@ import logging
 import fitz
 
 from agno.models.base import Model
+from agno.models.anthropic import Claude
 from agno.models.google.gemini import Gemini
 from agno.models.openai import OpenAIChat
 from agno.models.openrouter import OpenRouter
@@ -41,11 +42,13 @@ def get_model(temperature: float = 0.3) -> Model:
 
     logger.info('using llm provider=%s model=%s', provider, model)
 
-    if provider == 'GOOGLE':
-        return Gemini(id=model, temperature=temperature, api_key=api_key)
-    elif provider == 'OPENAI':
-        return OpenAIChat(id=model, temperature=temperature, api_key=api_key)
-    elif provider == 'OPENROUTER':
-        return OpenRouter(id=model, temperature=temperature, api_key=api_key)
-    else:
+    providers = {
+        'OPENAI': OpenAIChat,
+        'OPENROUTER': OpenRouter,
+        'GEMINI': Gemini,
+        'ANTHROPIC': Claude,
+    }
+    if provider not in providers:
         raise ValueError(f'Provedor {provider} não encontrado')
+
+    return providers[provider](id=model, temperature=temperature, api_key=api_key)
