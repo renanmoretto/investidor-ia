@@ -20,23 +20,17 @@
 
 <form method="post" action="/settings" class="mt-8 space-y-4">
   <div class="rounded-2xl border border-neutral-200 p-6">
-    <h2 class="mb-5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">Provedor e Modelo</h2>
-
     {% call field('Provedor') %}
       {{ select('provider', provider_options, config.provider) }}
     {% endcall %}
 
-    {% call field('Modelo', hint='Exemplo: gemini-2.0-flash, gpt-4o-mini') %}
+    {% call field('Modelo') %}
       {{ input('model', value=config.model, placeholder='gemini-2.0-flash') }}
     {% endcall %}
-  </div>
 
-  <div class="rounded-2xl border border-neutral-200 p-6">
-    <h2 class="mb-5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">API Keys</h2>
-
-    {% call field('Google') %}{{ input('google_key', value=api_keys.GOOGLE, type='password') }}{% endcall %}
-    {% call field('OpenAI') %}{{ input('openai_key', value=api_keys.OPENAI, type='password') }}{% endcall %}
-    {% call field('OpenRouter') %}{{ input('openrouter_key', value=api_keys.OPENROUTER, type='password') }}{% endcall %}
+    {% call field('API Key') %}
+      {{ input('api_key', value=config.api_key, type='password') }}
+    {% endcall %}
 
     <p class="text-[11px] text-neutral-400">
       Gere uma chave gratuita do Gemini em
@@ -55,6 +49,14 @@
 
 {% block scripts %}
 <script>
+  const apiKeys = {{ api_keys | tojson }};
+  const provider = document.querySelector('[name="provider"]');
+  const apiKey = document.querySelector('[name="api_key"]');
+
+  provider.addEventListener('change', () => {
+    apiKey.value = apiKeys[provider.value] || '';
+  });
+
   const saved = document.getElementById('saved');
   if (saved) {
     setTimeout(() => {

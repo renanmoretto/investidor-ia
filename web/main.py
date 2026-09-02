@@ -176,11 +176,9 @@ def settings_page(request: Request, saved: bool = False):
 @app.post('/settings')
 def settings_save(
     provider: str = Form(...),
-    model: str = Form(...),
-    google_key: str = Form(''),
-    openai_key: str = Form(''),
-    openrouter_key: str = Form(''),
+    model: str = Form(''),
+    api_key: str = Form(''),
 ):
-    settings.save_api_keys({'GOOGLE': google_key, 'OPENAI': openai_key, 'OPENROUTER': openrouter_key})
+    settings.save_api_key(provider, api_key)
     settings.save_model(provider, model)
     return RedirectResponse('/settings?saved=true', status_code=303)

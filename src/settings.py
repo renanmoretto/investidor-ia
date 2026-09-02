@@ -25,7 +25,7 @@ def ensure_db_dir() -> None:
 
 PROVIDERS = ['GOOGLE', 'OPENAI', 'OPENROUTER']
 DEFAULT_PROVIDER = 'GOOGLE'
-DEFAULT_MODEL = 'gemini-2.0-flash'
+DEFAULT_MODEL = ''
 
 INVESTORS = {
     'buffett': 'Warren Buffett',
@@ -50,9 +50,11 @@ def get_api_keys() -> dict[str, str]:
     return {provider: keys.get(provider) or '' for provider in PROVIDERS}
 
 
-def save_api_keys(api_keys: dict[str, str]):
-    API_KEYS_FILE.write_text(json.dumps(api_keys, indent=4))
-    logger.info('api keys saved for providers: %s', [p for p, k in api_keys.items() if k])
+def save_api_key(provider: str, api_key: str):
+    keys = get_api_keys()
+    keys[provider] = api_key
+    API_KEYS_FILE.write_text(json.dumps(keys, indent=4))
+    logger.info('api key saved for provider=%s', provider)
 
 
 def save_model(provider: str, model: str):
