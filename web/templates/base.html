@@ -1,29 +1,122 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-br" class="h-full">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Investidor-IA{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <header>
-    <nav>
-      <a class="brand" href="/">Investidor-IA</a>
-      <a href="/chat">Chat</a>
-      <a href="/generate">Gerar Relatório</a>
-      <a href="/reports">Meus Relatórios</a>
-      <a href="/settings">Configurações</a>
-    </nav>
-  </header>
 
-  <main>
-    {% if not configured %}
-    <p class="alert">
-      Configure o provedor, o modelo e a chave de API em <a href="/settings">Configurações</a>.
-    </p>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+          },
+          keyframes: {
+            'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            'fade-up': {
+              '0%': { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            'pop-in': {
+              '0%': { opacity: '0', transform: 'translateY(-4px) scale(0.98)' },
+              '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+            },
+            'slide-in': {
+              '0%': { opacity: '0', transform: 'translateX(-8px)' },
+              '100%': { opacity: '1', transform: 'translateX(0)' },
+            },
+            blink: { '0%, 100%': { opacity: '0.2' }, '50%': { opacity: '1' } },
+          },
+          animation: {
+            'fade-in': 'fade-in 0.25s ease-out both',
+            'fade-up': 'fade-up 0.3s ease-out both',
+            'pop-in': 'pop-in 0.14s ease-out both',
+            'slide-in': 'slide-in 0.3s ease-out both',
+            blink: 'blink 1.2s ease-in-out infinite',
+          },
+        },
+      },
+    };
+  </script>
+</head>
+
+{% set path = request.url.path %}
+{% set nav_items = [
+  ('/chat', 'Chat'),
+  ('/generate', 'Gerar Relatório'),
+  ('/reports', 'Meus Relatórios'),
+  ('/settings', 'Configurações'),
+] %}
+
+<body class="h-full overflow-hidden bg-white font-mono text-neutral-900 antialiased">
+<div class="flex h-full">
+
+  <div id="overlay"
+       class="fixed inset-0 z-20 hidden bg-neutral-900/20 backdrop-blur-[1px] md:hidden"></div>
+
+  <aside id="sidebar"
+         class="fixed inset-y-0 left-0 z-30 flex w-60 shrink-0 -translate-x-full flex-col
+                border-r border-neutral-200 bg-neutral-50 transition-transform duration-200 ease-out
+                md:static md:translate-x-0">
+    <div class="flex h-14 items-center gap-2 px-5">
+      <span class="h-2 w-2 rounded-full bg-neutral-900"></span>
+      <a href="/" class="text-sm font-bold tracking-tight">Investidor-IA</a>
+    </div>
+
+    <nav class="flex flex-1 flex-col gap-1 px-3 py-2">
+      {% for href, label in nav_items %}
+      {% set active = path.startswith(href) %}
+      <a href="{{ href }}"
+         class="group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-all duration-150
+                {% if active %}bg-neutral-900 font-medium text-white shadow-sm
+                {% else %}text-neutral-500 hover:bg-neutral-200/60 hover:text-neutral-900{% endif %}">
+        <span class="h-1 w-1 rounded-full transition-colors
+                     {% if active %}bg-white{% else %}bg-neutral-300 group-hover:bg-neutral-500{% endif %}"></span>
+        {{ label }}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <div class="border-t border-neutral-200 px-5 py-4">
+      <p class="text-[10px] leading-relaxed text-neutral-400">
+        Relatórios gerados por IA. Não é recomendação de investimento.
+      </p>
+    </div>
+  </aside>
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex h-14 shrink-0 items-center gap-3 border-b border-neutral-200 px-4 md:hidden">
+      <button id="menu-button" type="button"
+              class="rounded-lg border border-neutral-200 p-2 transition-colors hover:bg-neutral-100">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+      <span class="text-sm font-bold">Investidor-IA</span>
+    </div>
+
+    {% block body %}
+    <main class="flex-1 overflow-y-auto [&::-webkit-scrollbar-thumb]:rounded-full
+                 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar]:w-2">
+      <div class="mx-auto max-w-3xl px-6 py-10 animate-fade-up">
+        {% if not configured %}
+        {% include "_not_configured.html" %}
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    {% endblock %}
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

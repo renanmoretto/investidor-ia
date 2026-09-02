@@ -67,6 +67,13 @@ def chat_set_investor(request: Request, investor: str = Form(...)):
     return response
 
 
+@app.get('/chat/messages', response_class=HTMLResponse)
+def chat_messages(request: Request):
+    """Rendered message list, fetched by the browser after a streamed answer ends."""
+    session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
+    return templates.TemplateResponse(request, '_chat_messages.html', {'session': session})
+
+
 @app.post('/chat/send')
 def chat_send(request: Request, message: str = Form(...)):
     session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
@@ -161,7 +168,7 @@ def settings_page(request: Request, saved: bool = False):
         'settings.html',
         config=config,
         api_keys=settings.get_api_keys(),
-        providers=settings.PROVIDERS,
+        provider_options={p: p for p in settings.PROVIDERS},
         saved=saved,
     )
 

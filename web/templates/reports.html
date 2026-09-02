@@ -1,19 +1,50 @@
 {% extends "base.html" %}
+{% from "_macros.html" import sentiment_badge %}
 {% block title %}Meus Relatórios - Investidor-IA{% endblock %}
 
 {% block content %}
-<h1>Meus Relatórios</h1>
+<div class="flex items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">Meus Relatórios</h1>
+    <p class="mt-1.5 text-[13px] text-neutral-400">
+      {{ reports | length }} relatório{{ 's' if reports | length != 1 }} salvo{{ 's' if reports | length != 1 }}
+    </p>
+  </div>
+  <a href="/generate"
+     class="shrink-0 rounded-lg bg-neutral-900 px-4 py-2.5 text-[13px] font-medium text-white no-underline
+            transition-all duration-150 hover:bg-neutral-700 active:scale-[0.98]">Novo relatório</a>
+</div>
 
 {% if not reports %}
-<p>Nenhum relatório encontrado.</p>
+<div class="mt-10 rounded-2xl border border-dashed border-neutral-200 py-20 text-center">
+  <p class="text-[13px] text-neutral-400">Nenhum relatório encontrado.</p>
+</div>
 {% else %}
-<ul class="report-list">
+<ul class="mt-8 space-y-2">
   {% for report in reports %}
-  <li>
-    <a href="/reports/{{ report.id }}">{{ report.label }}</a>
+  <li class="group flex items-center gap-4 rounded-xl border border-neutral-200 px-4 py-3.5 transition-all
+             duration-150 hover:border-neutral-900 hover:shadow-sm animate-fade-up"
+      style="animation-delay: {{ loop.index0 * 40 }}ms">
+    <a href="/reports/{{ report.id }}" class="min-w-0 flex-1 no-underline">
+      <div class="flex items-center gap-2.5">
+        <span class="text-[13px] font-semibold tracking-tight">{{ report.ticker }}</span>
+        {{ sentiment_badge(report.data['investor']['sentiment']) }}
+      </div>
+      <p class="mt-1 truncate text-[12px] text-neutral-400">
+        {{ report.investor_label }} · {{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}
+      </p>
+    </a>
+
     <form method="post" action="/reports/{{ report.id }}/delete"
           onsubmit="return confirm('Excluir este relatório?')">
-      <button type="submit" class="danger">Excluir</button>
+      <button type="submit" title="Excluir"
+              class="rounded-lg p-2 text-neutral-300 opacity-0 transition-all duration-150
+                     hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M6 7h12M9 7V5h6v2m-8 0 1 12h8l1-12"></path>
+        </svg>
+      </button>
     </form>
   </li>
   {% endfor %}

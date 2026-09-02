@@ -2,52 +2,85 @@
 {% block title %}Gerando relatório - Investidor-IA{% endblock %}
 
 {% block content %}
-<h1>Gerando relatório</h1>
-<p>{{ job.ticker }} - {{ INVESTORS.get(job.investor_name, job.investor_name) }}</p>
+<div class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-neutral-400">
+  <span id="pulse" class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-900"></span>
+  <span id="status-label">Gerando relatório</span>
+</div>
 
-<ul class="steps" id="steps">
+<h1 class="mt-2 text-2xl font-bold tracking-tight">
+  {{ job.ticker }}
+  <span class="text-neutral-300">/</span>
+  {{ INVESTORS.get(job.investor_name, job.investor_name) }}
+</h1>
+
+<ul id="steps" class="mt-8 space-y-1">
   {% for key, label in steps %}
-  <li data-step="{{ key }}"><span class="mark">·</span> {{ label }}</li>
+  <li data-step="{{ key }}"
+      class="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] text-neutral-400 transition-all duration-200">
+    <span data-mark class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border
+                           border-neutral-200 text-[10px] text-neutral-300">{{ loop.index }}</span>
+    <span data-label>{{ label }}</span>
+  </li>
   {% endfor %}
 </ul>
 
-<p id="status">Iniciando...</p>
+<div id="error" hidden class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 animate-fade-in">
+  <p class="text-[11px] font-medium uppercase tracking-wider text-red-500">Erro</p>
+  <p id="error-message" class="mt-1 break-words text-[13px] text-red-700"></p>
+  <a href="/generate" class="mt-3 inline-block text-[13px] text-red-700 underline underline-offset-2">Tentar de novo</a>
+</div>
+{% endblock %}
 
+{% block scripts %}
 <script>
   const jobId = {{ job.id | tojson }};
+  const statusLabel = document.getElementById('status-label');
+  const pulse = document.getElementById('pulse');
+
+  const CHECK = '<svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">'
+    + '<path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"></path></svg>';
+  const SPINNER = '<svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">'
+    + '<circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>'
+    + '<path class="opacity-90" fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-3a7 7 0 0 0-7-7V2Z"></path></svg>';
+
+  function paint(job) {
+    document.querySelectorAll('#steps li').forEach((li) => {
+      const mark = li.querySelector('[data-mark]');
+      if (job.done_steps.includes(li.dataset.step)) {
+        li.className = 'flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] text-neutral-400 transition-all duration-200';
+        mark.className = 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white';
+        mark.innerHTML = CHECK;
+      } else if (job.step === li.dataset.step) {
+        li.className = 'flex items-center gap-3 rounded-lg bg-neutral-50 px-3 py-3 text-[13px] font-medium text-neutral-900 transition-all duration-200';
+        mark.className = 'flex h-5 w-5 shrink-0 items-center justify-center text-neutral-900';
+        mark.innerHTML = SPINNER;
+      }
+    });
+  }
 
   async function poll() {
     const res = await fetch(`/api/jobs/${jobId}`);
     if (!res.ok) {
-      document.getElementById('status').textContent = 'Geração não encontrada.';
+      statusLabel.textContent = 'Geração não encontrada';
+      pulse.classList.remove('animate-blink');
       return;
     }
     const job = await res.json();
-
-    document.querySelectorAll('#steps li').forEach((li) => {
-      const step = li.dataset.step;
-      const mark = li.querySelector('.mark');
-      if (job.done_steps.includes(step)) {
-        li.className = 'done';
-        mark.textContent = '✓';
-      } else if (job.step === step) {
-        li.className = 'running';
-        mark.textContent = '→';
-      }
-    });
+    paint(job);
 
     if (job.status === 'done') {
-      document.getElementById('status').textContent = 'Pronto! Redirecionando...';
+      statusLabel.textContent = 'Pronto';
       window.location = `/reports/${job.report_id}`;
       return;
     }
     if (job.status === 'error') {
-      const el = document.getElementById('status');
-      el.className = 'alert';
-      el.textContent = `Erro: ${job.error}`;
+      statusLabel.textContent = 'Falhou';
+      pulse.classList.replace('bg-neutral-900', 'bg-red-500');
+      pulse.classList.remove('animate-blink');
+      document.getElementById('error-message').textContent = job.error;
+      document.getElementById('error').hidden = false;
       return;
     }
-    document.getElementById('status').textContent = job.step_label || 'Processando...';
     setTimeout(poll, 2000);
   }
 

@@ -1,35 +1,66 @@
 {% extends "base.html" %}
+{% from "_macros.html" import select, field, input %}
 {% block title %}Configurações - Investidor-IA{% endblock %}
 
 {% block content %}
-<h1>Configurações</h1>
+<h1 class="text-2xl font-bold tracking-tight">Configurações</h1>
+<p class="mt-1.5 text-[13px] text-neutral-400">Escolha o provedor, o modelo e informe a chave de API.</p>
 
-{% if saved %}<p class="success">Configurações salvas com sucesso.</p>{% endif %}
+{% if saved %}
+<div id="saved"
+     class="mt-6 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3
+            animate-fade-in">
+  <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5"
+       viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"></path>
+  </svg>
+  <p class="text-[13px] text-emerald-800">Configurações salvas com sucesso.</p>
+</div>
+{% endif %}
 
-<form method="post" action="/settings">
-  <h2>Provedor e Modelo</h2>
+<form method="post" action="/settings" class="mt-8 space-y-4">
+  <div class="rounded-2xl border border-neutral-200 p-6">
+    <h2 class="mb-5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">Provedor e Modelo</h2>
 
-  <label for="provider">Provedor</label>
-  <select id="provider" name="provider">
-    {% for p in providers %}
-    <option value="{{ p }}" {% if p == config.provider %}selected{% endif %}>{{ p }}</option>
-    {% endfor %}
-  </select>
+    {% call field('Provedor') %}
+      {{ select('provider', provider_options, config.provider) }}
+    {% endcall %}
 
-  <label for="model">Modelo</label>
-  <input id="model" name="model" type="text" value="{{ config.model }}" placeholder="gemini-2.0-flash">
+    {% call field('Modelo', hint='Exemplo: gemini-2.0-flash, gpt-4o-mini') %}
+      {{ input('model', value=config.model, placeholder='gemini-2.0-flash') }}
+    {% endcall %}
+  </div>
 
-  <h2>API Keys</h2>
+  <div class="rounded-2xl border border-neutral-200 p-6">
+    <h2 class="mb-5 text-[11px] font-medium uppercase tracking-wider text-neutral-400">API Keys</h2>
 
-  <label for="google_key">GOOGLE API KEY</label>
-  <input id="google_key" name="google_key" type="password" value="{{ api_keys.GOOGLE }}">
+    {% call field('Google') %}{{ input('google_key', value=api_keys.GOOGLE, type='password') }}{% endcall %}
+    {% call field('OpenAI') %}{{ input('openai_key', value=api_keys.OPENAI, type='password') }}{% endcall %}
+    {% call field('OpenRouter') %}{{ input('openrouter_key', value=api_keys.OPENROUTER, type='password') }}{% endcall %}
 
-  <label for="openai_key">OPENAI API KEY</label>
-  <input id="openai_key" name="openai_key" type="password" value="{{ api_keys.OPENAI }}">
+    <p class="text-[11px] text-neutral-400">
+      Gere uma chave gratuita do Gemini em
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
+         class="underline underline-offset-2 hover:no-underline">aistudio.google.com/apikey</a>.
+    </p>
+  </div>
 
-  <label for="openrouter_key">OPENROUTER API KEY</label>
-  <input id="openrouter_key" name="openrouter_key" type="password" value="{{ api_keys.OPENROUTER }}">
-
-  <button type="submit">Salvar</button>
+  <button type="submit"
+          class="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-[13px] font-medium text-white
+                 transition-all duration-150 hover:bg-neutral-700 active:scale-[0.99]">
+    Salvar
+  </button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const saved = document.getElementById('saved');
+  if (saved) {
+    setTimeout(() => {
+      saved.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+      setTimeout(() => saved.remove(), 500);
+    }, 3000);
+  }
+</script>
 {% endblock %}

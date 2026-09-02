@@ -1,48 +1,98 @@
 {% extends "base.html" %}
+{% from "_macros.html" import sentiment_badge %}
 {% block title %}{{ report.ticker }} - {{ report.investor_label }}{% endblock %}
 
 {% set analysts = report.data['analysts'] %}
 {% set investor = report.data['investor'] %}
+{% set prose = 'prose prose-sm prose-neutral max-w-none prose-headings:font-semibold
+                prose-headings:tracking-tight prose-p:leading-relaxed prose-table:text-[12px]
+                prose-th:border prose-th:border-neutral-200 prose-th:bg-neutral-50 prose-th:px-2 prose-th:py-1
+                prose-td:border prose-td:border-neutral-200 prose-td:px-2 prose-td:py-1' %}
 
 {% block content %}
-<p><a href="/reports">&larr; Meus Relatórios</a></p>
+<a href="/reports"
+   class="inline-flex items-center gap-1.5 text-[12px] text-neutral-400 no-underline transition-colors
+          hover:text-neutral-900">
+  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6 6m-6-6 6-6"></path>
+  </svg>
+  Meus Relatórios
+</a>
 
-<h1>{{ report.ticker }} - {{ report.investor_label }}</h1>
-<p class="hint">Gerado em {{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}</p>
-
-{% for key, name in [
-  ('earnings_release', 'Earnings Release'),
-  ('financial', 'Financial'),
-  ('valuation', 'Valuation'),
-  ('news', 'News'),
-] %}
-{% set analysis = analysts[key] %}
-<details>
-  <summary>
-    Opinião do analista de {{ name }} -
-    <span class="sentiment {{ analysis['sentiment'] }}">{{ analysis['sentiment'] }}</span>
-  </summary>
-  <p>Confiança: {{ analysis['confidence'] }}%</p>
-  <div class="markdown">{{ analysis['content'] | markdown | safe }}</div>
-</details>
-{% endfor %}
-
-<h1>Sentimento: <span class="sentiment {{ investor['sentiment'] }}">{{ investor['sentiment'] }}</span></h1>
-<h1>Confiança: {{ investor['confidence'] }}%</h1>
-
-<div class="markdown">{{ investor['content'] | markdown | safe }}</div>
-
-<hr>
-<p class="disclaimer"><strong class="danger-text">Disclaimer:</strong></p>
-<p class="disclaimer">
-  Este relatório foi gerado por um sistema de Inteligência Artificial e NÃO constitui recomendação de investimento.
-  As análises apresentadas são meramente informativas e não devem ser utilizadas como única base para decisões de
-  investimento. Os desenvolvedores e o sistema não se responsabilizam por eventuais perdas ou ganhos decorrentes do uso
-  destas informações. Investimentos em renda variável envolvem riscos e podem resultar em perdas patrimoniais.
+<div class="mt-5 flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl font-bold tracking-tight">{{ report.ticker }}</h1>
+  {{ sentiment_badge(investor['sentiment']) }}
+</div>
+<p class="mt-1.5 text-[13px] text-neutral-400">
+  {{ report.investor_label }} · {{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}
 </p>
 
-<form method="post" action="/reports/{{ report.id }}/delete"
+<div class="mt-6 flex gap-3">
+  <div class="flex-1 rounded-xl border border-neutral-200 px-4 py-3">
+    <p class="text-[10px] uppercase tracking-wider text-neutral-400">Sentimento</p>
+    <p class="mt-1 text-lg font-semibold tracking-tight
+              {{ {'BULLISH': 'text-emerald-600', 'NEUTRAL': 'text-amber-600', 'BEARISH': 'text-red-600'}
+                 .get(investor['sentiment'], '') }}">{{ investor['sentiment'] }}</p>
+  </div>
+  <div class="flex-1 rounded-xl border border-neutral-200 px-4 py-3">
+    <p class="text-[10px] uppercase tracking-wider text-neutral-400">Confiança</p>
+    <p class="mt-1 text-lg font-semibold tracking-tight">{{ investor['confidence'] }}%</p>
+    <div class="mt-2 h-1 overflow-hidden rounded-full bg-neutral-100">
+      <div class="h-full rounded-full bg-neutral-900 transition-all duration-700"
+           style="width: {{ investor['confidence'] }}%"></div>
+    </div>
+  </div>
+</div>
+
+<h2 class="mt-10 text-[11px] font-medium uppercase tracking-wider text-neutral-400">Analistas</h2>
+<div class="mt-3 space-y-2">
+  {% for key, name in [
+    ('earnings_release', 'Earnings Release'),
+    ('financial', 'Financeiro'),
+    ('valuation', 'Valuation'),
+    ('news', 'Notícias'),
+  ] %}
+  {% set analysis = analysts[key] %}
+  <details class="group rounded-xl border border-neutral-200 transition-colors hover:border-neutral-300
+                  open:border-neutral-900">
+    <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5">
+      <svg class="h-3 w-3 shrink-0 text-neutral-400 transition-transform duration-200 group-open:rotate-90"
+           fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"></path>
+      </svg>
+      <span class="flex-1 text-[13px] font-medium">{{ name }}</span>
+      <span class="text-[11px] text-neutral-400">{{ analysis['confidence'] }}%</span>
+      {{ sentiment_badge(analysis['sentiment']) }}
+    </summary>
+    <div class="border-t border-neutral-100 px-4 py-4 animate-fade-in">
+      <div class="overflow-x-auto"><div class="{{ prose }}">{{ analysis['content'] | markdown | safe }}</div></div>
+    </div>
+  </details>
+  {% endfor %}
+</div>
+
+<h2 class="mt-10 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+  Análise de {{ report.investor_label }}
+</h2>
+<div class="mt-3 overflow-x-auto"><div class="{{ prose }}">{{ investor['content'] | markdown | safe }}</div></div>
+
+<div class="mt-12 rounded-xl bg-neutral-50 px-4 py-3.5">
+  <p class="text-[10px] font-medium uppercase tracking-wider text-red-500">Disclaimer</p>
+  <p class="mt-1.5 text-[11px] leading-relaxed text-neutral-400">
+    Este relatório foi gerado por um sistema de Inteligência Artificial e NÃO constitui recomendação de
+    investimento. As análises apresentadas são meramente informativas e não devem ser utilizadas como única base
+    para decisões de investimento. Os desenvolvedores e o sistema não se responsabilizam por eventuais perdas ou
+    ganhos decorrentes do uso destas informações. Investimentos em renda variável envolvem riscos e podem
+    resultar em perdas patrimoniais.
+  </p>
+</div>
+
+<form method="post" action="/reports/{{ report.id }}/delete" class="mt-6"
       onsubmit="return confirm('Excluir este relatório?')">
-  <button type="submit" class="danger">Excluir relatório</button>
+  <button type="submit"
+          class="rounded-lg border border-neutral-200 px-4 py-2 text-[13px] text-neutral-500 transition-all
+                 duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.98]">
+    Excluir relatório
+  </button>
 </form>
 {% endblock %}

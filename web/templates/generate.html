@@ -1,24 +1,40 @@
 {% extends "base.html" %}
+{% from "_macros.html" import select, field, input %}
 {% block title %}Gerar Relatório - Investidor-IA{% endblock %}
 
 {% block content %}
-<h1>Gerar Relatório</h1>
+<h1 class="text-2xl font-bold tracking-tight">Gerar Relatório</h1>
+<p class="mt-1.5 text-[13px] text-neutral-400">
+  Quatro analistas processam os dados da empresa e o investidor escolhido escreve o relatório final.
+</p>
 
-{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+{% if error %}
+<div class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700 animate-fade-in">
+  {{ error }}
+</div>
+{% endif %}
 
-<form method="post" action="/generate">
-  <label for="ticker">Ticker da ação</label>
-  <input id="ticker" name="ticker" type="text" placeholder="PETR4" autocomplete="off" required>
+<form method="post" action="/generate" class="mt-8 rounded-2xl border border-neutral-200 p-6">
+  {% call field('Ticker da ação') %}
+    {{ input('ticker', placeholder='PETR4', required=true, disabled=not configured) }}
+  {% endcall %}
 
-  <label for="investor">Investidor</label>
-  <select id="investor" name="investor">
-    {% for key, name in INVESTORS.items() %}
-    <option value="{{ key }}">{{ name }}</option>
-    {% endfor %}
-  </select>
+  {% call field('Investidor') %}
+    {{ select('investor', INVESTORS, 'buffett') }}
+  {% endcall %}
 
-  <button type="submit" {% if not configured %}disabled{% endif %}>Gerar Relatório</button>
+  <button type="submit" {% if not configured %}disabled{% endif %}
+          class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5
+                 text-[13px] font-medium text-white transition-all duration-150 hover:bg-neutral-700
+                 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-neutral-200">
+    Gerar Relatório
+    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m0 0-6-6m6 6-6 6"></path>
+    </svg>
+  </button>
 </form>
 
-<p class="hint">A geração leva alguns minutos. Você pode acompanhar o progresso na próxima página.</p>
+<p class="mt-4 text-center text-[11px] text-neutral-400">
+  A geração leva alguns minutos. O progresso aparece na próxima página.
+</p>
 {% endblock %}
