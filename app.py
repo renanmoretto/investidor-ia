@@ -1,27 +1,19 @@
 import os
-import sys
-import subprocess
+import threading
+import webbrowser
 
-import streamlit as st
+import uvicorn
+
+HOST = os.getenv('HOST', '127.0.0.1')
+PORT = int(os.getenv('PORT', '8000'))
 
 
-protected_pages = [
-    st.Page('pages/chat.py', title='Chat'),
-    st.Page('pages/generate.py', title='Gerar Relatório'),
-    st.Page('pages/reports.py', title='Meus Relatórios'),
-    st.Page('pages/settings.py', title='Configurações'),
-]
-
-pg = st.navigation(protected_pages)
-pg.run()
+def main():
+    url = f'http://{HOST}:{PORT}'
+    print(f'Investidor-IA rodando em {url}')
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    uvicorn.run('web.main:app', host=HOST, port=PORT)
 
 
 if __name__ == '__main__':
-    # Obtém o caminho absoluto do diretório atual
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Caminho para o arquivo app.py
-    app_path = os.path.join(current_dir, 'app.py')
-
-    # Executa o comando streamlit run app.py
-    subprocess.run([sys.executable, '-m', 'streamlit', 'run', app_path])
+    main()

@@ -1,12 +1,17 @@
+import logging
+
 import fitz
 
 from agno.models.base import Model
+from agno.models.anthropic import Claude
 from agno.models.google.gemini import Gemini
 from agno.models.openai import OpenAIChat
 from agno.models.openrouter import OpenRouter
 
 
-from src.settings import PROVIDER, MODEL, API_KEY
+from src.settings import get_llm_config
+
+logger = logging.getLogger(__name__)
 
 
 def pdf_to_text(pdf_path: str) -> str:
@@ -29,11 +34,21 @@ def calc_cagr(data: dict, name: str, length: int = 5) -> float:
 
 
 def get_model(temperature: float = 0.3) -> Model:
-    if PROVIDER == 'GOOGLE':
-        return Gemini(id=MODEL, temperature=temperature, api_key=API_KEY)
-    elif PROVIDER == 'OPENAI':
-        return OpenAIChat(id=MODEL, temperature=temperature, api_key=API_KEY)
-    elif PROVIDER == 'OPENROUTER':
-        return OpenRouter(id=MODEL, temperature=temperature, api_key=API_KEY)
-    else:
-        raise ValueError(f'Modelo {MODEL} não encontrado')
+    config = get_llm_config()
+    provider, model, api_key = config['provider'], config['model'], config['api_key']
+
+    if not model or not api_key:
+        raise ValueError('Configure o provedor, o modelo e a chave de API no menu de configurações')
+
+    logger.info('using llm provider=%s model=%s', provider, model)
+
+    providers = {
+        'OPENAI': OpenAIChat,
+        'OPENROUTER': OpenRouter,
+        'GEMINI': Gemini,
+        'ANTHROPIC': Claude,
+    }
+    if provider not in providers:
+        raise ValueError(f'Provedor {provider} não encontrado')
+
+    return providers[provider](id=model, temperature=temperature, api_key=api_key)

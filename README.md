@@ -53,7 +53,7 @@ O processo segue o seguinte fluxo:
     ```bash
     uv run app.py
     ```
-    O aplicativo deve abrir automaticamente  no navegador, se não abrir, entre no link: http://localhost:8501/
+    O aplicativo deve abrir automaticamente  no navegador, se não abrir, entre no link: http://localhost:8000/
 
 
 6. Vá na página de Configurações, insira sua api key, clique em salvar, dê um refresh na página e pronto, só usar.

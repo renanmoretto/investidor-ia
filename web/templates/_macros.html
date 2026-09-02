@@ -1,0 +1,70 @@
+{% macro select(name, options, value, auto_submit=false, width='w-full') %}
+<div class="relative {{ width }}" data-select {% if auto_submit %}data-auto-submit{% endif %}>
+  <input type="hidden" name="{{ name }}" value="{{ value }}" data-select-input>
+
+  <button type="button" data-select-button
+          class="flex w-full items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white
+                 px-3.5 py-2.5 text-left text-[13px] transition-all duration-150
+                 hover:border-neutral-300 focus:border-neutral-900 focus:outline-none
+                 focus:ring-2 focus:ring-neutral-900/10">
+    <span data-select-label class="truncate">{{ options[value] }}</span>
+    <svg data-select-chevron class="h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform duration-200"
+         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path>
+    </svg>
+  </button>
+
+  <ul data-select-list hidden
+      class="absolute z-40 mt-1.5 w-full overflow-hidden rounded-lg border border-neutral-200 bg-white
+             p-1 shadow-lg shadow-neutral-900/5 animate-pop-in">
+    {% for key, label in options.items() %}
+    <li>
+      <button type="button" data-value="{{ key }}"
+              class="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-[13px]
+                     transition-colors duration-100 hover:bg-neutral-100
+                     data-[selected=true]:bg-neutral-900 data-[selected=true]:text-white"
+              data-selected="{{ 'true' if key == value else 'false' }}">
+        <span class="truncate">{{ label }}</span>
+        <svg class="h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity data-[on=true]:opacity-100"
+             data-on="{{ 'true' if key == value else 'false' }}"
+             fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"></path>
+        </svg>
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
+
+{% macro field(label, hint='') %}
+<div class="mb-5">
+  <label class="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-neutral-400">{{ label }}</label>
+  {{ caller() }}
+  {% if hint %}<p class="mt-1.5 text-[11px] text-neutral-400">{{ hint }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro input(name, value='', type='text', placeholder='', required=false, disabled=false) %}
+<input name="{{ name }}" type="{{ type }}" value="{{ value }}" placeholder="{{ placeholder }}"
+       {% if required %}required{% endif %} {% if disabled %}disabled{% endif %} autocomplete="off"
+       class="w-full rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5 text-[13px]
+              placeholder:text-neutral-300 transition-all duration-150
+              hover:border-neutral-300 focus:border-neutral-900 focus:outline-none
+              focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50 disabled:text-neutral-400">
+{% endmacro %}
+
+
+{% macro sentiment_badge(sentiment) %}
+{% set styles = {
+  'BULLISH': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'NEUTRAL': 'bg-amber-50 text-amber-700 border-amber-200',
+  'BEARISH': 'bg-red-50 text-red-700 border-red-200',
+} %}
+<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium tracking-wide
+             {{ styles.get(sentiment, 'bg-neutral-100 text-neutral-600 border-neutral-200') }}">
+  {{ sentiment }}
+</span>
+{% endmacro %}

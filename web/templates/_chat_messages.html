@@ -1,0 +1,35 @@
+{% if not session.messages %}
+<div class="flex h-full flex-col items-center justify-center text-center animate-fade-up">
+  <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50">
+    <span class="h-2 w-2 rounded-full bg-neutral-900"></span>
+  </div>
+  <h2 class="text-lg font-semibold tracking-tight">{{ INVESTORS[session.investor] }}</h2>
+  <p class="mt-1.5 max-w-sm text-[13px] leading-relaxed text-neutral-400">
+    Pergunte sobre uma ação, um balanço ou uma tese de investimento.
+  </p>
+</div>
+{% endif %}
+
+{% for message in session.messages %}
+{% if message.role == 'user' %}
+<div class="mb-6 flex justify-end animate-fade-up">
+  <div class="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-neutral-900 px-4 py-2.5
+              text-[13px] leading-relaxed text-white">{{ message.content }}</div>
+</div>
+{% else %}
+<div class="mb-8 animate-fade-up">
+  <div class="mb-2 flex items-center gap-2">
+    <span class="h-1.5 w-1.5 rounded-full bg-neutral-900"></span>
+    <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+      {{ INVESTORS[session.investor] }}
+    </span>
+  </div>
+  <div class="overflow-x-auto">
+    <div class="prose prose-sm prose-neutral max-w-none prose-headings:font-semibold prose-headings:tracking-tight
+                prose-p:leading-relaxed prose-table:text-[12px] prose-th:border prose-th:border-neutral-200
+                prose-th:bg-neutral-50 prose-th:px-2 prose-th:py-1 prose-td:border prose-td:border-neutral-200
+                prose-td:px-2 prose-td:py-1">{{ message.content | markdown | safe }}</div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}

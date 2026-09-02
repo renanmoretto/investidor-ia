@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% from "_macros.html" import select %}
+{% block title %}Chat - Investidor-IA{% endblock %}
+
+{% block body %}
+<div class="flex min-h-0 flex-1 flex-col">
+
+  <header class="shrink-0 border-b border-neutral-200 px-6 py-3">
+    <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
+    <form method="post" action="/chat/investor" class="min-w-0">
+      {{ select('investor', INVESTORS, session.investor, auto_submit=true, width='w-52') }}
+    </form>
+
+    <form method="post" action="/chat/new">
+      <button type="submit"
+              class="flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-[13px]
+                     text-neutral-600 transition-all duration-150 hover:border-neutral-300
+                     hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.98]">
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M12 5v14M5 12h14"></path>
+        </svg>
+        Novo chat
+      </button>
+    </form>
+    </div>
+  </header>
+
+  <div id="scroll"
+       class="flex-1 overflow-y-auto [&::-webkit-scrollbar-thumb]:rounded-full
+              [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300
+              [&::-webkit-scrollbar]:w-2">
+    <div class="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-8">
+      {% if not configured %}{% include "_not_configured.html" %}{% endif %}
+      <div id="messages" class="flex-1">{% include "_chat_messages.html" %}</div>
+    </div>
+  </div>
+
+  <div class="shrink-0 bg-white">
+    <div class="mx-auto max-w-3xl px-6 py-4">
+      <form id="chat-form"
+            class="flex items-end gap-2 rounded-2xl border border-neutral-200 bg-white p-2 transition-all
+                   duration-150 focus-within:border-neutral-900 focus-within:ring-2 focus-within:ring-neutral-900/10">
+        <textarea id="message" rows="1" placeholder="Digite uma mensagem" {% if not configured %}disabled{% endif %}
+                  class="max-h-40 flex-1 resize-none bg-transparent px-2.5 py-2 text-[13px] leading-relaxed
+                         placeholder:text-neutral-300 focus:outline-none disabled:cursor-not-allowed"></textarea>
+        <button id="send" type="submit" {% if not configured %}disabled{% endif %}
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white
+                       transition-all duration-150 hover:bg-neutral-700 active:scale-95
+                       disabled:cursor-not-allowed disabled:bg-neutral-200">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0-6 6m6-6 6 6"></path>
+          </svg>
+        </button>
+      </form>
+      <p class="mt-2 text-center text-[10px] text-neutral-300">
+        Enter envia · Shift+Enter quebra linha
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('message');
+  const send = document.getElementById('send');
+  const messages = document.getElementById('messages');
+  const scroll = document.getElementById('scroll');
+  const investorName = {{ INVESTORS[session.investor] | tojson }};
+
+  const scrollToBottom = () => scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' });
+
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = `${input.scrollHeight}px`;
+  });
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  function appendUserMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'mb-6 flex justify-end animate-fade-up';
+    el.innerHTML = `<div class="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md
+      bg-neutral-900 px-4 py-2.5 text-[13px] leading-relaxed text-white"></div>`;
+    el.firstElementChild.textContent = text;
+    messages.appendChild(el);
+  }
+
+  function appendAssistantMessage() {
+    const el = document.createElement('div');
+    el.className = 'mb-8 animate-fade-up';
+    el.innerHTML = `
+      <div class="mb-2 flex items-center gap-2">
+        <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-900"></span>
+        <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-400" data-author></span>
+      </div>
+      <div class="flex gap-1 py-1" data-dots>
+        <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300"></span>
+        <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300 [animation-delay:200ms]"></span>
+        <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300 [animation-delay:400ms]"></span>
+      </div>
+      <div class="whitespace-pre-wrap break-words text-[13px] leading-relaxed" data-body hidden></div>`;
+    el.querySelector('[data-author]').textContent = investorName;
+    messages.appendChild(el);
+    return el;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const message = input.value.trim();
+    if (!message || send.disabled) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    input.disabled = true;
+    send.disabled = true;
+
+    // clears the empty state on the first message
+    const emptyState = messages.querySelector('.justify-center');
+    if (emptyState) emptyState.remove();
+
+    appendUserMessage(message);
+    const bubble = appendAssistantMessage();
+    const dots = bubble.querySelector('[data-dots]');
+    const body = bubble.querySelector('[data-body]');
+    scrollToBottom();
+
+    try {
+      const payload = new FormData();
+      payload.append('message', message);
+      const res = await fetch('/chat/send', { method: 'POST', body: payload });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (dots.isConnected) {
+          dots.remove();
+          body.hidden = false;
+        }
+        body.textContent += decoder.decode(value, { stream: true });
+        scrollToBottom();
+      }
+
+      // swaps the streamed plain text for the markdown rendered by the server
+      const rendered = await fetch('/chat/messages');
+      messages.innerHTML = await rendered.text();
+    } finally {
+      input.disabled = false;
+      send.disabled = false;
+      input.focus();
+      scrollToBottom();
+    }
+  });
+
+  scroll.scrollTop = scroll.scrollHeight;
+  input.focus();
+</script>
+{% endblock %}
