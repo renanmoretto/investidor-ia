@@ -3,7 +3,6 @@ from textwrap import dedent
 
 import polars as pl
 from agno.agent import Agent
-from agno.tools.reasoning import ReasoningTools
 
 from src.agents.base import BaseAgentOutput
 from src.data import stocks
@@ -152,7 +151,6 @@ async def analyze(
         model=get_model(),
         system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
-        tools=[ReasoningTools(think=True, analyze=True)],
         response_model=BaseAgentOutput,
         retries=3,
     )
