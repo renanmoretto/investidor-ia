@@ -13,7 +13,7 @@ from src.settings import get_llm_config
 
 logger = logging.getLogger(__name__)
 
-OPENROUTER_MAX_TOKENS = 16000
+OPENROUTER_MAX_TOKENS = 8192
 
 
 def pdf_to_text(pdf_path: str) -> str:
