@@ -13,6 +13,8 @@ from src.settings import get_llm_config
 
 logger = logging.getLogger(__name__)
 
+OPENROUTER_MAX_TOKENS = 16000
+
 
 def pdf_to_text(pdf_path: str) -> str:
     doc = fitz.open(pdf_path)
@@ -51,4 +53,9 @@ def get_model(temperature: float = 0.3) -> Model:
     if provider not in providers:
         raise ValueError(f'Provedor {provider} não encontrado')
 
-    return providers[provider](id=model, temperature=temperature, api_key=api_key)
+    options = {}
+    if provider == 'OPENROUTER':
+        # agno limits OpenRouter to 1024 output tokens by default; a reasoning model uses all of them before it answers
+        options['max_tokens'] = OPENROUTER_MAX_TOKENS
+
+    return providers[provider](id=model, temperature=temperature, api_key=api_key, **options)

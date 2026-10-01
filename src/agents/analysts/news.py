@@ -9,7 +9,7 @@ from ddgs.exceptions import DDGSException, RatelimitException, TimeoutException
 from agno.agent import Agent
 
 from src.utils import get_model
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ async def analyze(ticker: str) -> BaseAgentOutput:
             retries=3,
         )
         response = await agent.arun('Faça uma análise das notícias')
-        return response.content
+        return structured_output(response)
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')
         return BaseAgentOutput(content='Erro ao gerar análise.', sentiment='NEUTRAL', confidence=0)

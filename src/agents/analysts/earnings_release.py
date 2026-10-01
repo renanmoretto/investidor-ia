@@ -6,7 +6,7 @@ import httpx
 from pypdf import PdfReader
 from agno.agent import Agent
 
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.data._sources import fundamentus
 from src.utils import get_model
@@ -107,7 +107,7 @@ async def analyze(ticker: str) -> BaseAgentOutput:
         response = await agent.arun(
             f'Analise o earnings release da empresa {company_name} - {ticker}:\n\n{earnings_release_text}'
         )
-        return response.content
+        return structured_output(response)
     except Exception as e:
         print(f'Erro ao analisar o earnings release: {e}')
         return BaseAgentOutput(content='Erro ao analisar o earnings release', sentiment='NEUTRAL', confidence=0)

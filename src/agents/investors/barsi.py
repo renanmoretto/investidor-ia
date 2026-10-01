@@ -4,7 +4,7 @@ from textwrap import dedent
 import polars as pl
 from agno.agent import Agent
 
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.utils import calc_cagr, get_model
 
@@ -155,4 +155,4 @@ async def analyze(
         retries=3,
     )
     r = await agent.arun(prompt)
-    return r.content
+    return structured_output(r)

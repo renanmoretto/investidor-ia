@@ -4,7 +4,7 @@ import polars as pl
 from agno.agent import Agent
 
 from src.utils import get_model
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.utils import calc_cagr
 
@@ -131,7 +131,7 @@ async def analyze(ticker: str) -> str:
             retries=3,
         )
         response = await agent.arun('Faça uma análise da empresa')
-        return response.content
+        return structured_output(response)
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')
         return BaseAgentOutput(content='Erro ao gerar análise.', sentiment='NEUTRAL', confidence=0)
