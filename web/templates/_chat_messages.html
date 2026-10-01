@@ -1,6 +1,5 @@
 {% from "_macros.html" import user_message, assistant_message, tool_call %}
 {% set name = INVESTORS[chat.investor] %}
-<span hidden data-preview-source>{{ chat.preview }}</span>
 
 {% if not chat.messages %}
 <div class="flex h-full flex-col items-center justify-center text-center animate-fade-up" data-empty>

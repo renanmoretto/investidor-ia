@@ -23,8 +23,6 @@ async function refreshMessages() {
   const res = await fetch(`${chatBase}/messages`);
   messages.innerHTML = await res.text();
   renderCharts(messages);
-  const preview = messages.querySelector('[data-preview-source]').textContent;
-  if (preview) document.querySelector('[data-preview]').textContent = preview;
 }
 
 function appendText(parts, delta) {

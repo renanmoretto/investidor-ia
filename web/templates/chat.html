@@ -3,31 +3,7 @@
 {% block title %}Chat - Investidor-IA{% endblock %}
 
 {% block body %}
-<div id="chat" class="flex min-h-0 flex-1 flex-col md:flex-row" data-investor="{{ chat.investor }}">
-
-  <aside class="flex shrink-0 gap-1 overflow-x-auto border-b border-neutral-200 p-2
-                md:w-64 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:p-3">
-    <p class="hidden px-2 pb-2 pt-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400 md:block">
-      Investidores
-    </p>
-    {% for key, name in INVESTORS.items() %}
-    {% set active = key == chat.investor %}
-    {% set preview = session.chats[key].preview if key in session.chats else '' %}
-    <a href="/chat/{{ key }}" {% if active %}aria-current="page"{% endif %}
-       class="flex shrink-0 items-center rounded-lg px-3 py-2 transition-all duration-150
-              {% if active %}bg-neutral-100{% else %}hover:bg-neutral-50{% endif %}">
-      <span class="min-w-0 md:flex-1">
-        <span class="block truncate text-[13px] {% if active %}font-medium{% else %}text-neutral-600{% endif %}">
-          {{ name }}
-        </span>
-        <span class="hidden truncate text-[11px] text-neutral-400 md:block" {% if active %}data-preview{% endif %}>
-          {{ preview or 'Sem mensagens' }}
-        </span>
-      </span>
-    </a>
-    {% endfor %}
-  </aside>
-
+<div id="chat" class="flex min-h-0 flex-1 flex-col" data-investor="{{ chat.investor }}">
   <div class="flex min-h-0 min-w-0 flex-1 flex-col">
     <header class="shrink-0 border-b border-neutral-200 px-6 py-3">
       <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">

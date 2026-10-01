@@ -27,16 +27,6 @@ class Chat:
         if self.messages and self.messages[-1].get('status') == 'streaming':
             self.messages[-1]['status'] = 'stopped'
 
-    @property
-    def preview(self) -> str:
-        for message in reversed(self.messages):
-            text = message.get('content') or ' '.join(
-                part['content'] for part in message.get('parts', []) if part['type'] == 'text'
-            )
-            if text.strip():
-                return ' '.join(text.split())[:80]
-        return ''
-
 
 @dataclass
 class ChatSession:
