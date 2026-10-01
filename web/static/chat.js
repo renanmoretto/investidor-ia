@@ -145,6 +145,16 @@ input.addEventListener('keydown', (event) => {
   }
 });
 
+// typing anywhere on the page goes to the message input
+document.addEventListener('keydown', (event) => {
+  if (document.activeElement === input || event.defaultPrevented) return;
+  if (event.target.closest('input, textarea, select, [contenteditable]')) return;
+  const paste = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v';
+  const printable = event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+  // the focus moves before the browser inserts the character, so the key is not lost
+  if (printable || paste) input.focus();
+});
+
 form.addEventListener('submit', (event) => {
   event.preventDefault();
   if (isBusy()) {
