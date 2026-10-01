@@ -14,12 +14,8 @@
     {% set active = key == chat.investor %}
     {% set preview = session.chats[key].preview if key in session.chats else '' %}
     <a href="/chat/{{ key }}" {% if active %}aria-current="page"{% endif %}
-       class="flex shrink-0 items-center gap-3 rounded-lg px-2.5 py-2 transition-all duration-150
+       class="flex shrink-0 items-center rounded-lg px-3 py-2 transition-all duration-150
               {% if active %}bg-neutral-100{% else %}hover:bg-neutral-50{% endif %}">
-      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold
-                   {% if active %}bg-neutral-900 text-white{% else %}border border-neutral-200 text-neutral-500{% endif %}">
-        {{ name.split() | map('first') | join }}
-      </span>
       <span class="min-w-0 md:flex-1">
         <span class="block truncate text-[13px] {% if active %}font-medium{% else %}text-neutral-600{% endif %}">
           {{ name }}
