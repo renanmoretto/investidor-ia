@@ -1,18 +1,17 @@
 # Investidor-IA 
 
-**Investidor-IA** é um projeto open-source em Python que utiliza modelos de linguagem (LLMs) para gerar relatórios de análise de ações no mercado brasileiro, simulando o estilo de investidores renomados como Warren Buffett, Benjamin Graham, Peter Lynch, Luiz Barsi, entre outros. O sistema coleta dados públicos de diversas fontes, processa-os através de agentes especializados e gera relatórios detalhados no estilo do investidor escolhido.
+**Investidor-IA** é um projeto open-source em Python que utiliza modelos de linguagem (LLMs) para gerar relatórios de análise de ações no mercado brasileiro, simulando o estilo de investidores renomados como Warren Buffett, Benjamin Graham e Luiz Barsi. O sistema coleta dados públicos de diversas fontes, processa-os através de agentes especializados e gera relatórios detalhados no estilo do investidor escolhido.
 
-PS: Atualmente o projeto funciona apenas com o Gemini. OpenAI e outros LLMs serão implementados no futuro.
+O projeto funciona com OpenAI, OpenRouter, Gemini e Anthropic. Escolha o provedor e o modelo na página de Configurações.
 
-Você pode gerar um api key do Gemini de forma gratuita no site da google:
-https://aistudio.google.com/apikey
+Você pode gerar uma api key do Gemini de forma gratuita: https://aistudio.google.com/apikey
 
 
 ## Chat
 
-Selecione algum investidor para conversar. O investidor tem acesso à internet e consegue pesquisar dados recentes da ação.
+Cada investidor tem o seu próprio chat. O investidor tem acesso à internet e aos dados da ação, mostra as consultas que fez e pode gerar gráficos. A resposta continua mesmo se você trocar de chat.
 
-![demo-chat](demo-chat.gif)
+![chat](docs/chat.png)
 
 
 
@@ -21,13 +20,11 @@ Selecione algum investidor para conversar. O investidor tem acesso à internet e
 O processo segue o seguinte fluxo:
 
 1. O usuário fornece o código de uma ação brasileira (exemplo: `PETR4`, `VALE3`, `ITUB4`)
-2. O usuário seleciona um investidor renomado (Warren Buffett, Benjamin Graham, Peter Lynch ou Luiz Barsi)
+2. O usuário seleciona um investidor renomado (Warren Buffett, Benjamin Graham ou Luiz Barsi)
 3. O sistema coleta automaticamente dados e notícias relevantes sobre a ação
 4. Analistas especializados processam diferentes aspectos: resultados financeiros, valuation, notícias e releases
 5. O investidor selecionado analisa todos os dados e relatórios dos analistas
 6. Um relatório detalhado é gerado com análises aprofundadas e recomendações no estilo do investidor escolhido
-
-![demo](demo.gif)
 
 ## Instalação
 
@@ -56,7 +53,7 @@ O processo segue o seguinte fluxo:
     O aplicativo deve abrir automaticamente  no navegador, se não abrir, entre no link: http://localhost:8000/
 
 
-6. Vá na página de Configurações, insira sua api key, clique em salvar, dê um refresh na página e pronto, só usar.
+6. Vá na página de Configurações, escolha o provedor e o modelo, insira sua api key, clique em salvar e pronto, só usar.
 
 ### Se você tem Git e Python
 
@@ -95,7 +92,7 @@ python app.py
 ```
 
 
-Vá na página de Configurações, insira sua api key do Gemini, clique em salvar e dê um refresh na página.
+Vá na página de Configurações, escolha o provedor e o modelo, insira sua api key e clique em salvar.
 
 
 ## Disclaimer
