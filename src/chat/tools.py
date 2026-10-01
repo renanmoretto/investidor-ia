@@ -9,7 +9,7 @@ from src.data import stocks
 logger = logging.getLogger(__name__)
 
 
-def detalhes(ticker: str) -> str:
+async def detalhes(ticker: str) -> str:
     """
     Obtém os detalhes da ação.
 
@@ -40,10 +40,10 @@ def detalhes(ticker: str) -> str:
                 'segmento_de_atuacao': 'Exploração. Refino e Distribuição'
             }
     """
-    return json.dumps(stocks.details(ticker))
+    return json.dumps(await stocks.details(ticker))
 
 
-def multiplos(ticker: str, limit: int = 10) -> str:
+async def multiplos(ticker: str, limit: int = 10) -> str:
     """
     Obtém o histórico anual de multiplos da ação.
 
@@ -91,10 +91,10 @@ def multiplos(ticker: str, limit: int = 10) -> str:
                 ...
             ]
     """
-    return json.dumps(stocks.multiples(ticker)[:limit])
+    return json.dumps(await stocks.multiples(ticker)[:limit])
 
 
-def dados_financeiros(
+async def dados_financeiros(
     ticker: str,
     document: str,
     period: str = 'quarter',
@@ -147,20 +147,20 @@ def dados_financeiros(
         ]
     """
     if document == 'resultados':
-        data = stocks.income_statement(ticker, period=period)
+        data = await stocks.income_statement(ticker, period=period)
         if period == 'annual' and resultado_ltm:
             data = data[1:]
         return json.dumps(data)
     elif document == 'balanco':
-        data = stocks.balance_sheet(ticker, period=period)
+        data = await stocks.balance_sheet(ticker, period=period)
         return json.dumps(data)
     elif document == 'fluxo_caixa':
-        data = stocks.cash_flow(ticker)
+        data = await stocks.cash_flow(ticker)
         return json.dumps(data)
     return "Erro: document deve ser 'resultados', 'balanco' ou 'fluxo_caixa'."
 
 
-def dividendos(ticker: str, agrupar_por_ano: bool = False) -> str:
+async def dividendos(ticker: str, agrupar_por_ano: bool = False) -> str:
     """
     Obtém os dividendos da ação.
     Por exemplo:
@@ -176,8 +176,8 @@ def dividendos(ticker: str, agrupar_por_ano: bool = False) -> str:
         str: uma lista de JSON contendo os dividendos da ação.
     """
     if agrupar_por_ano:
-        return json.dumps(stocks.dividends_by_year(ticker))
-    return json.dumps(stocks.dividends(ticker))
+        return json.dumps(await stocks.dividends_by_year(ticker))
+    return json.dumps(await stocks.dividends(ticker))
 
 
 class SerieGrafico(BaseModel):

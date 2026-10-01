@@ -1,8 +1,8 @@
+import asyncio
 import logging
-import time
 from typing import TypedDict
 
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from duckduckgo_search.exceptions import DuckDuckGoSearchException, RatelimitException, TimeoutException
@@ -25,11 +25,12 @@ class News(TypedDict):
     content: str
 
 
-def _search(query: str) -> list[dict]:
+async def _search(query: str) -> list[dict]:
     """Runs the search. Returns an empty list when DuckDuckGo stays unavailable, so the report continues without news."""
     for attempt, wait in enumerate([*SEARCH_RETRY_WAITS, None], start=1):
         try:
-            results = DDGS().text(query, max_results=5, region='br-pt', timelimit='3m')
+            # the DuckDuckGo client is sync only
+            results = await asyncio.to_thread(DDGS().text, query, max_results=5, region='br-pt', timelimit='3m')
             logger.info('news search done attempt=%d results=%d', attempt, len(results))
             return results
         except (RatelimitException, TimeoutException) as e:
@@ -37,42 +38,47 @@ def _search(query: str) -> list[dict]:
                 logger.error('news search failed after %d attempts, continuing without news error=%s', attempt, e)
                 return []
             logger.warning('news search attempt=%d failed, retry in %ds error=%s', attempt, wait, e)
-            time.sleep(wait)
+            await asyncio.sleep(wait)
         except DuckDuckGoSearchException as e:
             logger.error('news search failed, continuing without news error=%s', e)
             return []
     return []
 
 
-def _article_content(url: str) -> str:
+async def _article_content(url: str) -> str:
     try:
-        r = requests.get(url, timeout=ARTICLE_TIMEOUT)
+        async with httpx.AsyncClient(timeout=ARTICLE_TIMEOUT, follow_redirects=True) as client:
+            r = await client.get(url)
         r.raise_for_status()
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         logger.warning('news article download failed url=%s error=%s', url, e)
         return 'Conteúdo não encontrado'
     soup_content = BeautifulSoup(r.text, 'html.parser').find('div', class_='content-editor')
     return soup_content.text if soup_content else 'Conteúdo não encontrado'
 
 
-def _search_news_einvestidor(ticker: str, company_name: str) -> list[News]:
-    results = _search(f'notícias sobre a empresa {company_name} (ticker {ticker}) site:einvestidor.estadao.com.br')
+async def _search_news_einvestidor(ticker: str, company_name: str) -> list[News]:
+    results = await _search(
+        f'notícias sobre a empresa {company_name} (ticker {ticker}) site:einvestidor.estadao.com.br'
+    )
 
     news = []
     for result in results:
         url = result['href']
         if '/tag/' in url:
             continue
-        news.append({'title': result['title'], 'url': url, 'body': result['body'], 'content': _article_content(url)})
-        time.sleep(1)
+        news.append(
+            {'title': result['title'], 'url': url, 'body': result['body'], 'content': await _article_content(url)}
+        )
+        await asyncio.sleep(1)
 
     logger.info('news collected ticker=%s count=%d', ticker, len(news))
     return news
 
 
-def analyze(ticker: str) -> BaseAgentOutput:
-    company_name = stocks.name(ticker)
-    news = _search_news_einvestidor(ticker, company_name)
+async def analyze(ticker: str) -> BaseAgentOutput:
+    company_name = await stocks.name(ticker)
+    news = await _search_news_einvestidor(ticker, company_name)
 
     prompt = f"""
     Você é um analista especializado em pesquisar e analisar notícias sobre empresas listadas na B3.
@@ -117,7 +123,7 @@ def analyze(ticker: str) -> BaseAgentOutput:
             response_model=BaseAgentOutput,
             retries=3,
         )
-        response = agent.run('Faça uma análise das notícias')
+        response = await agent.arun('Faça uma análise das notícias')
         return response.content
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')

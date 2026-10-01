@@ -1,7 +1,7 @@
+import asyncio
 import datetime
 import json
 import logging
-import threading
 import uuid
 
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ from src.settings import DB_DIR, INVESTORS
 logger = logging.getLogger(__name__)
 
 REPORTS_FILE = DB_DIR / 'reports.json'
-_lock = threading.Lock()
+_lock = asyncio.Lock()
 
 _INVESTOR_MODULES = {
     'buffett': buffett,
@@ -64,16 +64,16 @@ def get_report(report_id: str) -> Report | None:
     return next((r for r in load_reports() if r.id == report_id), None)
 
 
-def add_report(report: Report):
-    with _lock:
+async def add_report(report: Report):
+    async with _lock:
         reports = load_reports()
         reports.append(report)
         save_reports(reports)
     logger.info('report saved id=%s ticker=%s', report.id, report.ticker)
 
 
-def delete_report(report_id: str) -> bool:
-    with _lock:
+async def delete_report(report_id: str) -> bool:
+    async with _lock:
         reports = load_reports()
         remaining = [r for r in reports if r.id != report_id]
         if len(remaining) == len(reports):
@@ -84,7 +84,7 @@ def delete_report(report_id: str) -> bool:
     return True
 
 
-def generate_report(ticker: str, investor_name: str, on_step=None) -> Report:
+async def generate_report(ticker: str, investor_name: str, on_step=None) -> Report:
     """Runs the analyst pipeline and the final investor analysis.
 
     on_step is called with each step key before it runs, so the caller can report progress.
@@ -95,7 +95,7 @@ def generate_report(ticker: str, investor_name: str, on_step=None) -> Report:
     ticker = ticker.upper().strip()
     logger.info('generating report ticker=%s investor=%s', ticker, investor_name)
 
-    stocks.details(ticker)  # raises ValueError if the ticker does not exist
+    await stocks.details(ticker)  # raises ValueError if the ticker does not exist
 
     def step(key: str):
         logger.info('report step ticker=%s step=%s', ticker, key)
@@ -103,19 +103,19 @@ def generate_report(ticker: str, investor_name: str, on_step=None) -> Report:
             on_step(key)
 
     step('earnings_release')
-    earnings_release_analysis = earnings_release.analyze(ticker)
+    earnings_release_analysis = await earnings_release.analyze(ticker)
 
     step('financial')
-    financial_analysis = financial.analyze(ticker)
+    financial_analysis = await financial.analyze(ticker)
 
     step('valuation')
-    valuation_analysis = valuation.analyze(ticker)
+    valuation_analysis = await valuation.analyze(ticker)
 
     step('news')
-    news_analysis = news.analyze(ticker=ticker)
+    news_analysis = await news.analyze(ticker=ticker)
 
     step('investor')
-    investor_analysis = _INVESTOR_MODULES[investor_name].analyze(
+    investor_analysis = await _INVESTOR_MODULES[investor_name].analyze(
         ticker=ticker,
         earnings_release_analysis=earnings_release_analysis,
         financial_analysis=financial_analysis,

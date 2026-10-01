@@ -3,8 +3,6 @@
 
 {% if not chat.messages %}
 <div class="flex h-full flex-col items-center justify-center text-center animate-fade-up" data-empty>
-  <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50
-              text-[13px] font-semibold">{{ name.split() | map('first') | join }}</div>
   <h2 class="text-lg font-semibold tracking-tight">{{ name }}</h2>
   <p class="mt-1.5 max-w-sm text-[13px] leading-relaxed text-neutral-400">
     Pergunte sobre uma ação, um balanço ou uma tese de investimento.

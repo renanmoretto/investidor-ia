@@ -12,7 +12,7 @@ from src import settings
 from src.chat.agent import get_chat_agent
 from src.reports import delete_report, get_report, load_reports
 from web import chat_sessions, jobs
-from web.chat_stream import stream_answer
+from web.chat_stream import follow_lines, start_answer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,11 +39,13 @@ templates.env.globals['INVESTORS'] = settings.INVESTORS
 
 def render(request: Request, template: str, **context) -> HTMLResponse:
     context.setdefault('configured', settings.is_configured())
+    session = chat_sessions.get(request.cookies.get(chat_sessions.COOKIE_NAME))
+    context.setdefault('running_chats', session.running if session else [])
     return templates.TemplateResponse(request, template, context)
 
 
 @app.get('/', response_class=HTMLResponse)
-def index():
+async def index():
     return RedirectResponse('/chat', status_code=303)
 
 
@@ -64,14 +66,21 @@ def _check_investor(investor: str):
         raise HTTPException(status_code=404, detail='Investidor não encontrado')
 
 
+@app.get('/api/chat/status')
+async def chat_status(request: Request):
+    """Investors with an answer in progress, polled by the sidebar."""
+    session = chat_sessions.get(request.cookies.get(chat_sessions.COOKIE_NAME))
+    return JSONResponse({'running': session.running if session else []})
+
+
 @app.get('/chat')
-def chat_index(request: Request):
+async def chat_index(request: Request):
     session = _chat_session(request)
     return _with_cookie(RedirectResponse(f'/chat/{session.last_investor}', status_code=303), session)
 
 
 @app.get('/chat/{investor}', response_class=HTMLResponse)
-def chat_page(request: Request, investor: str):
+async def chat_page(request: Request, investor: str):
     _check_investor(investor)
     session = _chat_session(request)
     session.last_investor = investor
@@ -79,7 +88,7 @@ def chat_page(request: Request, investor: str):
 
 
 @app.post('/chat/{investor}/new')
-def chat_new(request: Request, investor: str):
+async def chat_new(request: Request, investor: str):
     _check_investor(investor)
     session = _chat_session(request)
     session.reset_chat(investor)
@@ -87,7 +96,7 @@ def chat_new(request: Request, investor: str):
 
 
 @app.get('/chat/{investor}/messages', response_class=HTMLResponse)
-def chat_messages(request: Request, investor: str):
+async def chat_messages(request: Request, investor: str):
     """Rendered message list, fetched by the browser after a streamed answer ends."""
     _check_investor(investor)
     session = _chat_session(request)
@@ -95,7 +104,7 @@ def chat_messages(request: Request, investor: str):
 
 
 @app.post('/chat/{investor}/stop')
-def chat_stop(request: Request, investor: str):
+async def chat_stop(request: Request, investor: str):
     _check_investor(investor)
     chat = _chat_session(request).chat(investor)
     logger.info('chat stop requested investor=%s streaming=%s', investor, chat.streaming)
@@ -104,7 +113,8 @@ def chat_stop(request: Request, investor: str):
 
 
 @app.post('/chat/{investor}/send')
-def chat_send(request: Request, investor: str, message: str = Form(...)):
+async def chat_send(request: Request, investor: str, message: str = Form(...)):
+    """Starts the answer in the background. The browser reads it from /stream."""
     _check_investor(investor)
     session = _chat_session(request)
     chat = session.chat(investor)
@@ -112,24 +122,35 @@ def chat_send(request: Request, investor: str, message: str = Form(...)):
         return JSONResponse({'error': 'Aguarde a resposta atual terminar.'}, status_code=409)
     logger.info('chat message session=%s investor=%s len=%d', session.id, investor, len(message))
 
-    def run(text: str):
+    async def run_agent(text: str):
         agent = get_chat_agent(investor=investor, session_id=chat.agent_session_id)
-        return agent.run(text, stream=True)
+        return await agent.arun(text, stream=True)
 
-    response = StreamingResponse(stream_answer(chat, message, run), media_type='application/x-ndjson')
-    return _with_cookie(response, session)
+    start_answer(chat, message, run_agent)
+    return _with_cookie(JSONResponse({'ok': True}, status_code=202), session)
+
+
+@app.get('/chat/{investor}/stream')
+async def chat_stream(request: Request, investor: str):
+    """All events of the answer in progress, from its start, then the new ones until it ends.
+    A closed connection does not stop the answer."""
+    _check_investor(investor)
+    chat = _chat_session(request).chat(investor)
+    if not chat.streaming:
+        return StreamingResponse(iter(()), media_type='application/x-ndjson')
+    return StreamingResponse(follow_lines(chat.run), media_type='application/x-ndjson')
 
 
 # reports
 
 
 @app.get('/generate', response_class=HTMLResponse)
-def generate_page(request: Request, error: str | None = None):
+async def generate_page(request: Request, error: str | None = None):
     return render(request, 'generate.html', error=error)
 
 
 @app.post('/generate')
-def generate_start(ticker: str = Form(...), investor: str = Form(...)):
+async def generate_start(ticker: str = Form(...), investor: str = Form(...)):
     if not settings.is_configured():
         return RedirectResponse('/settings', status_code=303)
     if not ticker.strip():
@@ -139,7 +160,7 @@ def generate_start(ticker: str = Form(...), investor: str = Form(...)):
 
 
 @app.get('/generate/{job_id}', response_class=HTMLResponse)
-def generate_status_page(request: Request, job_id: str):
+async def generate_status_page(request: Request, job_id: str):
     job = jobs.get_job(job_id)
     if not job:
         return RedirectResponse('/generate?error=Geração+não+encontrada', status_code=303)
@@ -147,7 +168,7 @@ def generate_status_page(request: Request, job_id: str):
 
 
 @app.get('/api/jobs/{job_id}')
-def job_status(job_id: str):
+async def job_status(job_id: str):
     job = jobs.get_job(job_id)
     if not job:
         return JSONResponse({'error': 'not found'}, status_code=404)
@@ -155,13 +176,13 @@ def job_status(job_id: str):
 
 
 @app.get('/reports', response_class=HTMLResponse)
-def reports_page(request: Request):
+async def reports_page(request: Request):
     reports = sorted(load_reports(), key=lambda r: r.generated_at, reverse=True)
     return render(request, 'reports.html', reports=reports)
 
 
 @app.get('/reports/{report_id}', response_class=HTMLResponse)
-def report_page(request: Request, report_id: str):
+async def report_page(request: Request, report_id: str):
     report = get_report(report_id)
     if not report:
         return RedirectResponse('/reports', status_code=303)
@@ -169,8 +190,8 @@ def report_page(request: Request, report_id: str):
 
 
 @app.post('/reports/{report_id}/delete')
-def report_delete(report_id: str):
-    delete_report(report_id)
+async def report_delete(report_id: str):
+    await delete_report(report_id)
     return RedirectResponse('/reports', status_code=303)
 
 
@@ -178,7 +199,7 @@ def report_delete(report_id: str):
 
 
 @app.get('/settings', response_class=HTMLResponse)
-def settings_page(request: Request, saved: bool = False):
+async def settings_page(request: Request, saved: bool = False):
     config = settings.get_llm_config()
     return render(
         request,
@@ -191,7 +212,7 @@ def settings_page(request: Request, saved: bool = False):
 
 
 @app.post('/settings')
-def settings_save(
+async def settings_save(
     provider: str = Form(...),
     model: str = Form(''),
     api_key: str = Form(''),

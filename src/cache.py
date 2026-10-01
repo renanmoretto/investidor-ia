@@ -1,4 +1,5 @@
-from typing import Callable
+from collections.abc import Awaitable, Callable
+from functools import wraps
 
 import diskcache
 
@@ -9,14 +10,15 @@ cache = diskcache.Cache(str(CACHE_DIR))
 
 
 def cache_it(
-    func: Callable,
+    func: Callable[..., Awaitable],
     expire: int = 60 * 5,  # 5 min
-) -> Callable:
-    def wrapper(*args, **kwargs):
+) -> Callable[..., Awaitable]:
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
         key = f'{func.__name__}:{args}:{kwargs}'
         result = cache.get(key)
         if result is None:
-            result = func(*args, **kwargs)
+            result = await func(*args, **kwargs)
             cache.set(key, result, expire=expire)
         return result
 

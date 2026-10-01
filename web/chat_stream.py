@@ -1,13 +1,13 @@
+import asyncio
 import json
 import logging
-import threading
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from agno.run.response import RunEvent
 from pydantic import ValidationError
 
 from src.chat.charts import build_chart_spec
-from web.chat_sessions import Chat
+from web.chat_sessions import Chat, Run
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,6 @@ TOOL_LABELS = {
     'duckduckgo_search': 'Busca na web',
     'duckduckgo_news': 'Busca de notícias',
 }
-
-
-def _line(event: dict) -> str:
-    return json.dumps(event, ensure_ascii=False) + '\n'
 
 
 def _append_text(message: dict, delta: str):
@@ -65,31 +61,27 @@ def _chart_part(tool) -> dict | None:
         return None
 
 
-def stream_answer(chat: Chat, text: str, run: Callable[[str], Iterator]) -> Iterator[str]:
-    """Runs the agent and yields one JSON event per line.
-
-    The assistant message is stored in the chat before the first event and updated in place,
-    so the partial answer survives a stop or a browser disconnect.
-    """
+def start_answer(chat: Chat, text: str, run_agent: Callable[[str], Awaitable[AsyncIterator]]) -> Run:
+    """Starts the answer as a background task. The assistant message is stored in the chat
+    at once and updated in place, so the page can show the partial answer at any time."""
     message = {'role': 'assistant', 'parts': [], 'status': 'streaming'}
     chat.messages.append({'role': 'user', 'content': text})
     chat.messages.append(message)
-    # one stop event per answer: a stopped run that is still blocked in a tool call
-    # must not be revived, or have its state reset, by the next answer
-    stop = threading.Event()
-    chat.stop = stop
-    chat.streaming = True
+    run = Run()
+    chat.run = run
+    run.task = asyncio.create_task(_answer(chat, run, message, text, run_agent))
+    return run
+
+
+async def follow_lines(run: Run) -> AsyncIterator[str]:
+    async for event in run.follow():
+        yield json.dumps(event, ensure_ascii=False) + '\n'
+
+
+async def _answer(chat: Chat, run: Run, message: dict, text: str, run_agent: Callable[[str], Awaitable[AsyncIterator]]):
     tools: dict[str, dict] = {}
-    chunks = None
-
     try:
-        chunks = run(text)
-        for chunk in chunks:
-            if stop.is_set():
-                message['status'] = 'stopped'
-                logger.info('chat stopped investor=%s', chat.investor)
-                break
-
+        async for chunk in await run_agent(text):
             event = getattr(chunk, 'event', '')
 
             # tool events carry the whole answer so far in `content`; only RunResponse holds a delta
@@ -97,7 +89,7 @@ def stream_answer(chat: Chat, text: str, run: Callable[[str], Iterator]) -> Iter
                 delta = chunk.content
                 if isinstance(delta, str) and delta:
                     _append_text(message, delta)
-                    yield _line({'type': 'text', 'delta': delta})
+                    run.publish({'type': 'text', 'delta': delta})
 
             elif event == RunEvent.tool_call_started.value:
                 for tool in chunk.tools or []:
@@ -107,7 +99,7 @@ def stream_answer(chat: Chat, text: str, run: Callable[[str], Iterator]) -> Iter
                     tools[tool.tool_call_id] = part
                     message['parts'].append(part)
                     logger.info('tool call started name=%s args=%s', part['name'], part['args'])
-                    yield _line(part)
+                    run.publish(dict(part))
 
             elif event == RunEvent.tool_call_completed.value:
                 for tool in chunk.tools or []:
@@ -124,32 +116,27 @@ def stream_answer(chat: Chat, text: str, run: Callable[[str], Iterator]) -> Iter
                             part['status'] = 'error'
 
                     logger.info('tool call completed name=%s status=%s', part['name'], part['status'])
-                    yield _line({**part, 'type': 'tool_done'})
+                    run.publish({**part, 'type': 'tool_done'})
                     if chart:
                         message['parts'].append(chart)
-                        yield _line(chart)
+                        run.publish(chart)
 
             elif event == RunEvent.run_error.value:
                 raise RuntimeError(str(chunk.content))
 
-        if message['status'] == 'streaming':
-            message['status'] = 'done'
+        message['status'] = 'done'
+    except asyncio.CancelledError:
+        message['status'] = 'stopped'
     except Exception as e:
         logger.exception('chat failed investor=%s', chat.investor)
         message['status'] = 'error'
         message['error'] = str(e)
-        yield _line({'type': 'error', 'message': str(e)})
+        run.publish({'type': 'error', 'message': str(e)})
     finally:
-        # also runs on GeneratorExit, when the browser disconnects mid-answer
-        if message['status'] == 'streaming':
-            message['status'] = 'stopped'
         for part in tools.values():
             if part['status'] == 'running':
                 part['status'] = 'stopped'
-        if chunks is not None and hasattr(chunks, 'close'):
-            chunks.close()
-        if chat.stop is stop:
-            chat.streaming = False
+        run.finish()
         logger.info(
             'chat answer finished investor=%s status=%s parts=%d',
             chat.investor,

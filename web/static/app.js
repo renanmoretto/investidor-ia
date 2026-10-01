@@ -74,3 +74,20 @@ if (menuButton) {
   menuButton.addEventListener('click', () => toggleSidebar(sidebar.classList.contains('-translate-x-full')));
   overlay.addEventListener('click', () => toggleSidebar(false));
 }
+
+// sidebar: investors with an answer in progress
+
+let chatStatusTimer = null;
+
+async function refreshChatStatus() {
+  clearTimeout(chatStatusTimer);
+  const res = await fetch('/api/chat/status');
+  const { running } = await res.json();
+  document.querySelectorAll('[data-chat-running]').forEach((el) => {
+    el.hidden = !running.includes(el.dataset.chatRunning);
+  });
+  if (running.length) chatStatusTimer = setTimeout(refreshChatStatus, 1500);
+}
+
+if (document.querySelector('[data-chat-running]:not([hidden])')) refreshChatStatus();
+

@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import threading
 import uuid
 from dataclasses import dataclass, field
 
@@ -36,42 +36,40 @@ class Job:
 
 
 _jobs: dict[str, Job] = {}
-_lock = threading.Lock()
+# the event loop keeps weak references to tasks only
+_tasks: set[asyncio.Task] = set()
 
 
 def get_job(job_id: str) -> Job | None:
-    with _lock:
-        return _jobs.get(job_id)
+    return _jobs.get(job_id)
 
 
 def start_job(ticker: str, investor_name: str) -> Job:
     job = Job(id=uuid.uuid4().hex, ticker=ticker.upper().strip(), investor_name=investor_name)
-    with _lock:
-        _jobs[job.id] = job
+    _jobs[job.id] = job
 
-    threading.Thread(target=_run, args=(job,), daemon=True).start()
+    task = asyncio.create_task(_run(job))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
     logger.info('job started id=%s ticker=%s investor=%s', job.id, job.ticker, job.investor_name)
     return job
 
 
-def _run(job: Job):
+async def _run(job: Job):
     def on_step(step: str):
-        with _lock:
-            if job.step:
-                job.done_steps.append(job.step)
-            job.step = step
+        if job.step:
+            job.done_steps.append(job.step)
+        job.step = step
 
     try:
-        report: Report = generate_report(job.ticker, job.investor_name, on_step=on_step)
-        add_report(report)
-        with _lock:
-            job.done_steps.append(job.step)
-            job.step = ''
-            job.status = 'done'
-            job.report_id = report.id
+        report: Report = await generate_report(job.ticker, job.investor_name, on_step=on_step)
+        await add_report(report)
+        job.done_steps.append(job.step)
+        job.step = ''
+        job.status = 'done'
+        job.report_id = report.id
         logger.info('job done id=%s report_id=%s', job.id, report.id)
     except Exception as e:
         logger.exception('job failed id=%s ticker=%s', job.id, job.ticker)
-        with _lock:
-            job.status = 'error'
-            job.error = str(e)
+        job.status = 'error'
+        job.error = str(e)

@@ -6,9 +6,9 @@ from src.agents.base import BaseAgentOutput
 from src.data import stocks
 
 
-def analyze(ticker: str) -> str:
-    details = stocks.details(ticker)
-    _screener = stocks.screener()
+async def analyze(ticker: str) -> str:
+    details = await stocks.details(ticker)
+    _screener = await stocks.screener()
     screener = (
         pl.DataFrame(_screener)
         .with_columns(stock=pl.col('ticker').str.slice(0, 4))
@@ -20,7 +20,7 @@ def analyze(ticker: str) -> str:
     company_name = details['nome']
     segment = details.get('segmento_de_atuacao', 'nan')
     current_price = details.get('preco', float('nan'))
-    five_years_historical_multiples = stocks.multiples(ticker)[:5]
+    five_years_historical_multiples = await stocks.multiples(ticker)[:5]
     sector_multiples_mean = screener.filter(pl.col('segmentname') == segment).mean()
     sector_multiples_median = screener.filter(pl.col('segmentname') == segment).median()
     total_market_multiples_median = screener.median()
@@ -107,7 +107,7 @@ def analyze(ticker: str) -> str:
             response_model=BaseAgentOutput,
             retries=3,
         )
-        response = agent.run('Faça uma análise do valuation')
+        response = await agent.arun('Faça uma análise do valuation')
         return response.content
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')

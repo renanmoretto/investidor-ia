@@ -55,7 +55,7 @@ A única seção obrigatória é a "CONCLUSÃO", onde você deve tomar a sua dec
 """)
 
 
-def analyze(
+async def analyze(
     ticker: str,
     earnings_release_analysis: BaseAgentOutput,
     financial_analysis: BaseAgentOutput,
@@ -63,11 +63,11 @@ def analyze(
     news_analysis: BaseAgentOutput,
 ) -> BaseAgentOutput:
     today = datetime.date.today()
-    company_name = stocks.name(ticker)
-    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    company_name = await stocks.name(ticker)
+    segment = await stocks.details(ticker).get('segmento_de_atuacao', 'nan')
 
-    income_statement = stocks.income_statement(ticker)
-    income_statement_5y = stocks.income_statement(ticker, period='annual')[:6]
+    income_statement = await stocks.income_statement(ticker)
+    income_statement_5y = await stocks.income_statement(ticker, period='annual')[:6]
 
     revenue_growth_by_year = (
         pl.DataFrame(income_statement)
@@ -95,11 +95,11 @@ def analyze(
         .to_dict()
     )
 
-    multiples = stocks.multiples(ticker)
+    multiples = await stocks.multiples(ticker)
     preco_sobre_lucro = multiples[0].get('p_l')
     preco_sobre_valor_patrimonial = multiples[0].get('p_vp')
 
-    _dividends_by_year = stocks.dividends_by_year(ticker)
+    _dividends_by_year = await stocks.dividends_by_year(ticker)
     if _dividends_by_year:
         dividends_growth_by_year = (
             pl.DataFrame(_dividends_by_year)
@@ -169,5 +169,5 @@ def analyze(
         response_model=BaseAgentOutput,
         retries=3,
     )
-    r = agent.run(prompt)
+    r = await agent.arun(prompt)
     return r.content

@@ -6,8 +6,6 @@ const send = document.getElementById('send');
 const messages = document.getElementById('messages');
 const scroll = document.getElementById('scroll');
 
-let controller = null;
-
 const isBusy = () => send.dataset.busy === 'true';
 const fromTemplate = (id) => document.getElementById(id).content.firstElementChild.cloneNode(true);
 const scrollToBottom = () => { scroll.scrollTop = scroll.scrollHeight; };
@@ -69,25 +67,47 @@ function handleEvent(parts, event) {
   else if (event.type === 'error') console.error('chat error', event.message);
 }
 
-async function readStream(res, parts) {
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
+// Reads the answer in progress from its first event. The answer runs on the server,
+// so this also works after a page change or a reload.
+async function followAnswer(parts) {
+  setBusy(true);
+  refreshChatStatus();
+  try {
+    const res = await fetch(`${chatBase}/stream`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      const stick = isNearBottom();
+      lines.filter(Boolean).forEach((line) => handleEvent(parts, JSON.parse(line)));
+      if (stick) scrollToBottom();
+    }
+  } catch (error) {
+    console.error('chat stream failed', error);
+  } finally {
     const stick = isNearBottom();
-    lines.filter(Boolean).forEach((line) => handleEvent(parts, JSON.parse(line)));
+    // swaps the streamed plain text for the markdown rendered by the server
+    await refreshMessages();
+    setBusy(false);
+    refreshChatStatus();
     if (stick) scrollToBottom();
+    input.focus();
   }
+}
+
+function appendLiveAnswer() {
+  const assistant = fromTemplate('tpl-assistant');
+  messages.appendChild(assistant);
+  return assistant.querySelector('[data-parts]');
 }
 
 async function sendMessage(message) {
   setBusy(true);
-  controller = new AbortController();
 
   const emptyState = messages.querySelector('[data-empty]');
   if (emptyState) emptyState.remove();
@@ -95,38 +115,22 @@ async function sendMessage(message) {
   const user = fromTemplate('tpl-user');
   user.querySelector('[data-user-text]').textContent = message;
   messages.appendChild(user);
-  const assistant = fromTemplate('tpl-assistant');
-  messages.appendChild(assistant);
+  const parts = appendLiveAnswer();
   scrollToBottom();
 
-  try {
-    const payload = new FormData();
-    payload.append('message', message);
-    const res = await fetch(`${chatBase}/send`, { method: 'POST', body: payload, signal: controller.signal });
-    if (!res.ok) {
-      console.error('chat send rejected', res.status);
-      input.value = message;
-      return;
-    }
-    await readStream(res, assistant.querySelector('[data-parts]'));
-  } catch (error) {
-    if (error.name !== 'AbortError') console.error('chat stream failed', error);
-  } finally {
-    controller = null;
-    const stick = isNearBottom();
-    // swaps the streamed plain text for the markdown rendered by the server
-    await refreshMessages();
-    setBusy(false);
-    if (stick) scrollToBottom();
-    input.focus();
+  const payload = new FormData();
+  payload.append('message', message);
+  const res = await fetch(`${chatBase}/send`, { method: 'POST', body: payload });
+  if (!res.ok) {
+    console.error('chat send rejected', res.status);
+    input.value = message;
   }
+  await followAnswer(parts);
 }
 
-async function stopAnswer() {
-  if (!controller) return;
-  // the server records the stop before the connection closes, so the next render shows the partial answer
-  await fetch(`${chatBase}/stop`, { method: 'POST' });
-  if (controller) controller.abort();
+function stopAnswer() {
+  // the server cancels the answer and closes the stream, then followAnswer renders the partial answer
+  return fetch(`${chatBase}/stop`, { method: 'POST' });
 }
 
 input.addEventListener('input', () => {
@@ -154,11 +158,13 @@ form.addEventListener('submit', (event) => {
   sendMessage(message);
 });
 
-// an answer cannot continue without the page that reads it
-window.addEventListener('pagehide', () => {
-  if (isBusy()) navigator.sendBeacon(`${chatBase}/stop`);
-});
-
 renderCharts(messages);
 scrollToBottom();
 input.focus();
+
+if (chatRoot.dataset.streaming === 'true') {
+  // the server rendered the partial answer; the event replay builds it again, live
+  const partial = [...messages.querySelectorAll('[data-assistant]')].pop();
+  if (partial) partial.remove();
+  followAnswer(appendLiveAnswer());
+}
