@@ -74,14 +74,3 @@ if (menuButton) {
   menuButton.addEventListener('click', () => toggleSidebar(sidebar.classList.contains('-translate-x-full')));
   overlay.addEventListener('click', () => toggleSidebar(false));
 }
-
-// collapsible nav group
-
-document.querySelectorAll('[data-nav-toggle]').forEach((toggle) => {
-  const group = toggle.nextElementSibling;
-  toggle.addEventListener('click', () => {
-    const open = group.dataset.open !== 'true';
-    group.dataset.open = String(open);
-    toggle.setAttribute('aria-expanded', String(open));
-  });
-});
