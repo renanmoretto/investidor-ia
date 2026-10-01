@@ -1,14 +1,21 @@
+import logging
 import time
 from typing import TypedDict
 
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
+from duckduckgo_search.exceptions import DuckDuckGoSearchException, RatelimitException, TimeoutException
 from agno.agent import Agent
 
 from src.utils import get_model
 from src.agents.base import BaseAgentOutput
 from src.data import stocks
+
+logger = logging.getLogger(__name__)
+
+SEARCH_RETRY_WAITS = [2, 5, 10]
+ARTICLE_TIMEOUT = 15
 
 
 class News(TypedDict):
@@ -18,26 +25,48 @@ class News(TypedDict):
     content: str
 
 
+def _search(query: str) -> list[dict]:
+    """Runs the search. Returns an empty list when DuckDuckGo stays unavailable, so the report continues without news."""
+    for attempt, wait in enumerate([*SEARCH_RETRY_WAITS, None], start=1):
+        try:
+            results = DDGS().text(query, max_results=5, region='br-pt', timelimit='3m')
+            logger.info('news search done attempt=%d results=%d', attempt, len(results))
+            return results
+        except (RatelimitException, TimeoutException) as e:
+            if wait is None:
+                logger.error('news search failed after %d attempts, continuing without news error=%s', attempt, e)
+                return []
+            logger.warning('news search attempt=%d failed, retry in %ds error=%s', attempt, wait, e)
+            time.sleep(wait)
+        except DuckDuckGoSearchException as e:
+            logger.error('news search failed, continuing without news error=%s', e)
+            return []
+    return []
+
+
+def _article_content(url: str) -> str:
+    try:
+        r = requests.get(url, timeout=ARTICLE_TIMEOUT)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning('news article download failed url=%s error=%s', url, e)
+        return 'Conteúdo não encontrado'
+    soup_content = BeautifulSoup(r.text, 'html.parser').find('div', class_='content-editor')
+    return soup_content.text if soup_content else 'Conteúdo não encontrado'
+
+
 def _search_news_einvestidor(ticker: str, company_name: str) -> list[News]:
-    results = DDGS().text(
-        f'notícias sobre a empresa {company_name} (ticker {ticker}) site:einvestidor.estadao.com.br',
-        max_results=5,
-        region='br-pt',
-        timelimit='3m',
-    )
+    results = _search(f'notícias sobre a empresa {company_name} (ticker {ticker}) site:einvestidor.estadao.com.br')
 
     news = []
     for result in results:
         url = result['href']
         if '/tag/' in url:
             continue
-        r = requests.get(url)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        soup_content = soup.find('div', class_='content-editor')
-        content = soup_content.text if soup_content else 'Conteúdo não encontrado'
-        news.append({'title': result['title'], 'url': url, 'body': result['body'], 'content': content})
+        news.append({'title': result['title'], 'url': url, 'body': result['body'], 'content': _article_content(url)})
         time.sleep(1)
 
+    logger.info('news collected ticker=%s count=%d', ticker, len(news))
     return news
 
 
