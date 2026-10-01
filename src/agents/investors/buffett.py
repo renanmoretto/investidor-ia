@@ -63,10 +63,10 @@ async def analyze(
 ) -> BaseAgentOutput:
     today = datetime.date.today()
     company_name = await stocks.name(ticker)
-    segment = await stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
 
     income_statement = await stocks.income_statement(ticker)
-    income_statement_5y = await stocks.income_statement(ticker, period='annual')[:6]
+    income_statement_5y = (await stocks.income_statement(ticker, period='annual'))[:6]
 
     revenue_growth_by_year = (
         pl.DataFrame(income_statement)
@@ -164,7 +164,7 @@ async def analyze(
         model=get_model(),
         system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
-        response_model=BaseAgentOutput,
+        output_schema=BaseAgentOutput,
         retries=3,
     )
     r = await agent.arun(prompt)

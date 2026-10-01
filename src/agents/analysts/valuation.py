@@ -20,7 +20,7 @@ async def analyze(ticker: str) -> str:
     company_name = details['nome']
     segment = details.get('segmento_de_atuacao', 'nan')
     current_price = details.get('preco', float('nan'))
-    five_years_historical_multiples = await stocks.multiples(ticker)[:5]
+    five_years_historical_multiples = (await stocks.multiples(ticker))[:5]
     sector_multiples_mean = screener.filter(pl.col('segmentname') == segment).mean()
     sector_multiples_median = screener.filter(pl.col('segmentname') == segment).median()
     total_market_multiples_median = screener.median()
@@ -104,7 +104,7 @@ async def analyze(ticker: str) -> str:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
         response = await agent.arun('Faça uma análise do valuation')

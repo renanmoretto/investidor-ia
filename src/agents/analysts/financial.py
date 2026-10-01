@@ -15,7 +15,7 @@ async def analyze(ticker: str) -> str:
     year_end = today.year
 
     company_name = await stocks.name(ticker)
-    segment = await stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
     dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
     dre_quarter = await stocks.income_statement(ticker, year_start, year_end, 'quarter')
     balance_sheet_quarter = await stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
@@ -127,7 +127,7 @@ async def analyze(ticker: str) -> str:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
         response = await agent.arun('Faça uma análise da empresa')

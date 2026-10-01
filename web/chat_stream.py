@@ -1,9 +1,9 @@
 import asyncio
 import json
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Callable
 
-from agno.run.response import RunEvent
+from agno.run.agent import RunEvent
 from pydantic import ValidationError
 
 from src.chat.charts import build_chart_spec
@@ -20,8 +20,8 @@ TOOL_LABELS = {
     'dados_financeiros': 'Dados financeiros',
     'dividendos': 'Dividendos',
     'criar_grafico': 'Gráfico',
-    'duckduckgo_search': 'Busca na web',
-    'duckduckgo_news': 'Busca de notícias',
+    'web_search': 'Busca na web',
+    'search_news': 'Busca de notícias',
 }
 
 
@@ -61,7 +61,7 @@ def _chart_part(tool) -> dict | None:
         return None
 
 
-def start_answer(chat: Chat, text: str, run_agent: Callable[[str], Awaitable[AsyncIterator]]) -> Run:
+def start_answer(chat: Chat, text: str, run_agent: Callable[[str], AsyncIterator]) -> Run:
     """Starts the answer as a background task. The assistant message is stored in the chat
     at once and updated in place, so the page can show the partial answer at any time."""
     message = {'role': 'assistant', 'parts': [], 'status': 'streaming'}
@@ -78,48 +78,49 @@ async def follow_lines(run: Run) -> AsyncIterator[str]:
         yield json.dumps(event, ensure_ascii=False) + '\n'
 
 
-async def _answer(chat: Chat, run: Run, message: dict, text: str, run_agent: Callable[[str], Awaitable[AsyncIterator]]):
+async def _answer(chat: Chat, run: Run, message: dict, text: str, run_agent: Callable[[str], AsyncIterator]):
     tools: dict[str, dict] = {}
     try:
-        async for chunk in await run_agent(text):
+        async for chunk in run_agent(text):
             event = getattr(chunk, 'event', '')
 
-            # tool events carry the whole answer so far in `content`; only RunResponse holds a delta
-            if event == RunEvent.run_response.value:
+            if event == RunEvent.run_content.value:
                 delta = chunk.content
                 if isinstance(delta, str) and delta:
                     _append_text(message, delta)
                     run.publish({'type': 'text', 'delta': delta})
 
             elif event == RunEvent.tool_call_started.value:
-                for tool in chunk.tools or []:
-                    if tool.tool_call_id in tools:
-                        continue
-                    part = _tool_part(tool)
-                    tools[tool.tool_call_id] = part
-                    message['parts'].append(part)
-                    logger.info('tool call started name=%s args=%s', part['name'], part['args'])
-                    run.publish(dict(part))
+                tool = chunk.tool
+                if not tool or tool.tool_call_id in tools:
+                    continue
+                part = _tool_part(tool)
+                tools[tool.tool_call_id] = part
+                message['parts'].append(part)
+                logger.info('tool call started name=%s args=%s', part['name'], part['args'])
+                run.publish(dict(part))
 
-            elif event == RunEvent.tool_call_completed.value:
-                for tool in chunk.tools or []:
-                    part = tools.get(tool.tool_call_id)
-                    if not part or part['status'] != 'running' or tool.result is None:
-                        continue
-                    part['result'] = str(tool.result)[:RESULT_PREVIEW_CHARS]
-                    part['status'] = 'error' if tool.tool_call_error else 'done'
+            elif event in (RunEvent.tool_call_completed.value, RunEvent.tool_call_error.value):
+                tool = chunk.tool
+                part = tools.get(tool.tool_call_id) if tool else None
+                if not part or part['status'] != 'running':
+                    continue
+                failed = event == RunEvent.tool_call_error.value or tool.tool_call_error
+                result = tool.result if tool.result is not None else getattr(chunk, 'error', None)
+                part['result'] = str(result or '')[:RESULT_PREVIEW_CHARS]
+                part['status'] = 'error' if failed else 'done'
 
-                    chart = None
-                    if part['name'] == CHART_TOOL and part['status'] == 'done':
-                        chart = _chart_part(tool)
-                        if not chart:
-                            part['status'] = 'error'
+                chart = None
+                if part['name'] == CHART_TOOL and part['status'] == 'done':
+                    chart = _chart_part(tool)
+                    if not chart:
+                        part['status'] = 'error'
 
-                    logger.info('tool call completed name=%s status=%s', part['name'], part['status'])
-                    run.publish({**part, 'type': 'tool_done'})
-                    if chart:
-                        message['parts'].append(chart)
-                        run.publish(chart)
+                logger.info('tool call completed name=%s status=%s', part['name'], part['status'])
+                run.publish({**part, 'type': 'tool_done'})
+                if chart:
+                    message['parts'].append(chart)
+                    run.publish(chart)
 
             elif event == RunEvent.run_error.value:
                 raise RuntimeError(str(chunk.content))

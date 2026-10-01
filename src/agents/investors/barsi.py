@@ -66,7 +66,7 @@ async def analyze(
     year_end = today.year
 
     company_name = await stocks.name(ticker)
-    segment = await stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
     multiples = await stocks.multiples(ticker)
     dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
@@ -151,7 +151,7 @@ async def analyze(
         model=get_model(),
         system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
-        response_model=BaseAgentOutput,
+        output_schema=BaseAgentOutput,
         retries=3,
     )
     r = await agent.arun(prompt)

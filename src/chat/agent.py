@@ -2,9 +2,7 @@ import logging
 from textwrap import dedent
 
 from agno.agent import Agent
-from agno.storage.sqlite import SqliteStorage
-from agno.memory.v2.memory import Memory
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
+from agno.db.sqlite import AsyncSqliteDb
 from agno.tools.duckduckgo import DuckDuckGoTools
 
 from src.utils import get_model
@@ -16,7 +14,7 @@ from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
 
 logger = logging.getLogger(__name__)
 
-DB_FILE = str(DB_DIR / 'agents_db.db')
+db = AsyncSqliteDb(db_file=str(DB_DIR / 'agents_db.db'))
 
 
 def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
@@ -29,12 +27,6 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             system_prompt = graham_system_prompt
         case _:
             raise ValueError(f'Investor {investor} not found')
-
-    storage = SqliteStorage(table_name='chat_agent_storage', db_file=DB_FILE)
-    memory = Memory(
-        model=get_model(),
-        db=SqliteMemoryDb(table_name='chat_agent_memory', db_file=DB_FILE),
-    )
 
     logger.info('chat agent created investor=%s session_id=%s', investor, session_id)
 
@@ -52,11 +44,10 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             """
         ),
         tools=[*STOCK_TOOLS, DuckDuckGoTools()],
-        storage=storage,
-        memory=memory,
+        db=db,
         enable_agentic_memory=True,
-        enable_user_memories=True,
-        add_history_to_messages=True,
+        update_memory_on_run=True,
+        add_history_to_context=True,
         num_history_runs=20,
         markdown=True,
     )

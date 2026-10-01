@@ -122,9 +122,9 @@ async def chat_send(request: Request, investor: str, message: str = Form(...)):
         return JSONResponse({'error': 'Aguarde a resposta atual terminar.'}, status_code=409)
     logger.info('chat message session=%s investor=%s len=%d', session.id, investor, len(message))
 
-    async def run_agent(text: str):
+    def run_agent(text: str):
         agent = get_chat_agent(investor=investor, session_id=chat.agent_session_id)
-        return await agent.arun(text, stream=True)
+        return agent.arun(text, stream=True, stream_events=True)
 
     start_answer(chat, message, run_agent)
     return _with_cookie(JSONResponse({'ok': True}, status_code=202), session)

@@ -91,7 +91,7 @@ async def multiplos(ticker: str, limit: int = 10) -> str:
                 ...
             ]
     """
-    return json.dumps(await stocks.multiples(ticker)[:limit])
+    return json.dumps((await stocks.multiples(ticker))[:limit])
 
 
 async def dados_financeiros(

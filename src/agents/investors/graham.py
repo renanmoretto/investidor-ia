@@ -99,7 +99,7 @@ async def analyze(
 
     stock_details = await stocks.details(ticker)
     company_name = await stocks.name(ticker)
-    segment = await stocks.details(ticker).get('segmento_de_atuacao', 'nan')
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
     multiples = await stocks.multiples(ticker)
     lastest_multiples = multiples[0]
     dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
@@ -188,7 +188,7 @@ async def analyze(
         model=get_model(),
         system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
-        response_model=BaseAgentOutput,
+        output_schema=BaseAgentOutput,
         retries=3,
     )
     r = await agent.arun(prompt)

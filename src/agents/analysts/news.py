@@ -4,8 +4,8 @@ from typing import TypedDict
 
 import httpx
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
-from duckduckgo_search.exceptions import DuckDuckGoSearchException, RatelimitException, TimeoutException
+from ddgs import DDGS
+from ddgs.exceptions import DDGSException, RatelimitException, TimeoutException
 from agno.agent import Agent
 
 from src.utils import get_model
@@ -39,7 +39,7 @@ async def _search(query: str) -> list[dict]:
                 return []
             logger.warning('news search attempt=%d failed, retry in %ds error=%s', attempt, wait, e)
             await asyncio.sleep(wait)
-        except DuckDuckGoSearchException as e:
+        except DDGSException as e:
             logger.error('news search failed, continuing without news error=%s', e)
             return []
     return []
@@ -120,7 +120,7 @@ async def analyze(ticker: str) -> BaseAgentOutput:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
         response = await agent.arun('Faça uma análise das notícias')

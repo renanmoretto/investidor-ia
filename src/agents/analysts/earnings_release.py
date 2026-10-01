@@ -16,7 +16,7 @@ async def _get_earnings_release_url(ticker: str) -> str:
     results_trimestrais = await fundamentus.resultados_trimestrais(ticker)
     download_link = results_trimestrais[0]['download_link']
     if download_link is None:
-        download_link = await fundamentus.apresentacoes(ticker)[0]['download_link']
+        download_link = (await fundamentus.apresentacoes(ticker))[0]['download_link']
 
     if download_link is None:
         raise ValueError('Não foi possível encontrar o earnings release')
@@ -101,7 +101,7 @@ async def analyze(ticker: str) -> BaseAgentOutput:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
         response = await agent.arun(
