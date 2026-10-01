@@ -1,35 +1,45 @@
-{% if not session.messages %}
-<div class="flex h-full flex-col items-center justify-center text-center animate-fade-up">
-  <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50">
-    <span class="h-2 w-2 rounded-full bg-neutral-900"></span>
-  </div>
-  <h2 class="text-lg font-semibold tracking-tight">{{ INVESTORS[session.investor] }}</h2>
+{% from "_macros.html" import user_message, assistant_message, tool_call %}
+{% set name = INVESTORS[chat.investor] %}
+<span hidden data-preview-source>{{ chat.preview }}</span>
+
+{% if not chat.messages %}
+<div class="flex h-full flex-col items-center justify-center text-center animate-fade-up" data-empty>
+  <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50
+              text-[13px] font-semibold">{{ name.split() | map('first') | join }}</div>
+  <h2 class="text-lg font-semibold tracking-tight">{{ name }}</h2>
   <p class="mt-1.5 max-w-sm text-[13px] leading-relaxed text-neutral-400">
     Pergunte sobre uma ação, um balanço ou uma tese de investimento.
   </p>
 </div>
 {% endif %}
 
-{% for message in session.messages %}
+{% for message in chat.messages %}
 {% if message.role == 'user' %}
-<div class="mb-6 flex justify-end animate-fade-up">
-  <div class="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-neutral-900 px-4 py-2.5
-              text-[13px] leading-relaxed text-white">{{ message.content }}</div>
-</div>
+{{ user_message(message.content) }}
 {% else %}
-<div class="mb-8 animate-fade-up">
-  <div class="mb-2 flex items-center gap-2">
-    <span class="h-1.5 w-1.5 rounded-full bg-neutral-900"></span>
-    <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
-      {{ INVESTORS[session.investor] }}
-    </span>
-  </div>
-  <div class="overflow-x-auto">
+{% call assistant_message(name) %}
+  {% for part in message.parts %}
+  {% if part.type == 'text' %}
+  <div class="mb-3 overflow-x-auto">
     <div class="prose prose-sm prose-neutral max-w-none prose-headings:font-semibold prose-headings:tracking-tight
                 prose-p:leading-relaxed prose-table:text-[12px] prose-th:border prose-th:border-neutral-200
                 prose-th:bg-neutral-50 prose-th:px-2 prose-th:py-1 prose-td:border prose-td:border-neutral-200
-                prose-td:px-2 prose-td:py-1">{{ message.content | markdown | safe }}</div>
+                prose-td:px-2 prose-td:py-1">{{ part.content | markdown | safe }}</div>
   </div>
-</div>
+  {% elif part.type == 'tool' %}
+  {{ tool_call(part) }}
+  {% elif part.type == 'chart' %}
+  <figure class="mb-3" data-chart='{{ part.spec | tojson }}'></figure>
+  {% endif %}
+  {% endfor %}
+
+  {% if message.status == 'stopped' %}
+  <p class="text-[11px] text-neutral-400">Resposta interrompida.</p>
+  {% elif message.status == 'error' %}
+  <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+    Erro ao gerar a resposta: {{ message.error }}
+  </p>
+  {% endif %}
+{% endcall %}
 {% endif %}
 {% endfor %}

@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import threading
 import uuid
 
 from pydantic import BaseModel, Field
@@ -13,6 +14,7 @@ from src.settings import DB_DIR, INVESTORS
 logger = logging.getLogger(__name__)
 
 REPORTS_FILE = DB_DIR / 'reports.json'
+_lock = threading.Lock()
 
 _INVESTOR_MODULES = {
     'buffett': buffett,
@@ -63,19 +65,21 @@ def get_report(report_id: str) -> Report | None:
 
 
 def add_report(report: Report):
-    reports = load_reports()
-    reports.append(report)
-    save_reports(reports)
+    with _lock:
+        reports = load_reports()
+        reports.append(report)
+        save_reports(reports)
     logger.info('report saved id=%s ticker=%s', report.id, report.ticker)
 
 
 def delete_report(report_id: str) -> bool:
-    reports = load_reports()
-    remaining = [r for r in reports if r.id != report_id]
-    if len(remaining) == len(reports):
-        logger.warning('report not found for deletion id=%s', report_id)
-        return False
-    save_reports(remaining)
+    with _lock:
+        reports = load_reports()
+        remaining = [r for r in reports if r.id != report_id]
+        if len(remaining) == len(reports):
+            logger.warning('report not found for deletion id=%s', report_id)
+            return False
+        save_reports(remaining)
     logger.info('report deleted id=%s', report_id)
     return True
 

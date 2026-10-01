@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 
 import markdown as md
-from fastapi import FastAPI, Form, Request
+import nh3
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,7 @@ from src import settings
 from src.chat.agent import get_chat_agent
 from src.reports import delete_report, get_report, load_reports
 from web import chat_sessions, jobs
+from web.chat_stream import stream_answer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +26,14 @@ app = FastAPI(title='Investidor-IA', on_startup=[settings.ensure_db_dir])
 app.mount('/static', StaticFiles(directory=WEB_DIR / 'static'), name='static')
 
 templates = Jinja2Templates(directory=str(WEB_DIR / 'templates'))
-templates.env.filters['markdown'] = lambda text: md.markdown(text or '', extensions=['tables', 'fenced_code'])
+
+
+def render_markdown(text: str) -> str:
+    # the text comes from the LLM and from web search results, so the HTML must be sanitized
+    return nh3.clean(md.markdown(text or '', extensions=['tables', 'fenced_code']))
+
+
+templates.env.filters['markdown'] = render_markdown
 templates.env.globals['INVESTORS'] = settings.INVESTORS
 
 
@@ -41,66 +50,74 @@ def index():
 # chat
 
 
-@app.get('/chat', response_class=HTMLResponse)
-def chat_page(request: Request):
-    session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
-    response = render(request, 'chat.html', session=session)
+def _chat_session(request: Request) -> chat_sessions.ChatSession:
+    return chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
+
+
+def _with_cookie(response, session: chat_sessions.ChatSession):
     response.set_cookie(chat_sessions.COOKIE_NAME, session.id, httponly=True, samesite='lax')
     return response
 
 
-@app.post('/chat/new')
-def chat_new(request: Request):
-    session = chat_sessions.reset(request.cookies.get(chat_sessions.COOKIE_NAME))
-    response = RedirectResponse('/chat', status_code=303)
-    response.set_cookie(chat_sessions.COOKIE_NAME, session.id, httponly=True, samesite='lax')
-    return response
+def _check_investor(investor: str):
+    if investor not in settings.INVESTORS:
+        raise HTTPException(status_code=404, detail='Investidor não encontrado')
 
 
-@app.post('/chat/investor')
-def chat_set_investor(request: Request, investor: str = Form(...)):
-    session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
-    session.investor = investor
-    logger.info('chat investor changed session=%s investor=%s', session.id, investor)
-    response = RedirectResponse('/chat', status_code=303)
-    response.set_cookie(chat_sessions.COOKIE_NAME, session.id, httponly=True, samesite='lax')
-    return response
+@app.get('/chat')
+def chat_index(request: Request):
+    session = _chat_session(request)
+    return _with_cookie(RedirectResponse(f'/chat/{session.last_investor}', status_code=303), session)
 
 
-@app.get('/chat/messages', response_class=HTMLResponse)
-def chat_messages(request: Request):
+@app.get('/chat/{investor}', response_class=HTMLResponse)
+def chat_page(request: Request, investor: str):
+    _check_investor(investor)
+    session = _chat_session(request)
+    session.last_investor = investor
+    return _with_cookie(render(request, 'chat.html', session=session, chat=session.chat(investor)), session)
+
+
+@app.post('/chat/{investor}/new')
+def chat_new(request: Request, investor: str):
+    _check_investor(investor)
+    session = _chat_session(request)
+    session.reset_chat(investor)
+    return _with_cookie(RedirectResponse(f'/chat/{investor}', status_code=303), session)
+
+
+@app.get('/chat/{investor}/messages', response_class=HTMLResponse)
+def chat_messages(request: Request, investor: str):
     """Rendered message list, fetched by the browser after a streamed answer ends."""
-    session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
-    return templates.TemplateResponse(request, '_chat_messages.html', {'session': session})
+    _check_investor(investor)
+    session = _chat_session(request)
+    return templates.TemplateResponse(request, '_chat_messages.html', {'chat': session.chat(investor)})
 
 
-@app.post('/chat/send')
-def chat_send(request: Request, message: str = Form(...)):
-    session = chat_sessions.get_or_create(request.cookies.get(chat_sessions.COOKIE_NAME))
-    session.messages.append({'role': 'user', 'content': message})
-    logger.info('chat message session=%s investor=%s len=%d', session.id, session.investor, len(message))
+@app.post('/chat/{investor}/stop')
+def chat_stop(request: Request, investor: str):
+    _check_investor(investor)
+    chat = _chat_session(request).chat(investor)
+    logger.info('chat stop requested investor=%s streaming=%s', investor, chat.streaming)
+    chat.request_stop()
+    return JSONResponse({'ok': True})
 
-    def stream():
-        full_response = ''
-        try:
-            agent = get_chat_agent(investor=session.investor, session_id=session.id)
-            for chunk in agent.run(message, stream=True):
-                content = getattr(chunk, 'content', None) or ''
-                if not isinstance(content, str):
-                    continue
-                full_response += content
-                yield content
-        except Exception as e:
-            logger.exception('chat failed session=%s', session.id)
-            error = f'\n\n**Erro:** {e}'
-            full_response += error
-            yield error
-        session.messages.append({'role': 'assistant', 'content': full_response})
-        logger.info('chat answered session=%s len=%d', session.id, len(full_response))
 
-    response = StreamingResponse(stream(), media_type='text/plain; charset=utf-8')
-    response.set_cookie(chat_sessions.COOKIE_NAME, session.id, httponly=True, samesite='lax')
-    return response
+@app.post('/chat/{investor}/send')
+def chat_send(request: Request, investor: str, message: str = Form(...)):
+    _check_investor(investor)
+    session = _chat_session(request)
+    chat = session.chat(investor)
+    if chat.streaming:
+        return JSONResponse({'error': 'Aguarde a resposta atual terminar.'}, status_code=409)
+    logger.info('chat message session=%s investor=%s len=%d', session.id, investor, len(message))
+
+    def run(text: str):
+        agent = get_chat_agent(investor=investor, session_id=chat.agent_session_id)
+        return agent.run(text, stream=True)
+
+    response = StreamingResponse(stream_answer(chat, message, run), media_type='application/x-ndjson')
+    return _with_cookie(response, session)
 
 
 # reports

@@ -6,10 +6,9 @@ from agno.storage.sqlite import SqliteStorage
 from agno.memory.v2.memory import Memory
 from agno.memory.v2.db.sqlite import SqliteMemoryDb
 from agno.tools.duckduckgo import DuckDuckGoTools
-from agno.tools.reasoning import ReasoningTools
 
 from src.utils import get_model
-from src.chat.tools import StocksTools
+from src.chat.tools import STOCK_TOOLS
 from src.settings import DB_DIR
 from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
 from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
@@ -49,10 +48,10 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             Se precisar de mais dados, use as funções disponíveis. Elas devem ser usadas para obter os dados necessários e responder ao usuário.
             Você tem acesso livre aos dados das ações no Brasil e ao uso das funções disponíveis, se aproveite delas para responder ao usuário.
             Caso você use alguma função disponível, não informe ao usuário que você usou uma função, apenas responda a pergunta.
+            Quando uma evolução no tempo ou uma comparação ficar mais clara de forma visual, use a função criar_grafico.
             """
         ),
-        tools=[ReasoningTools(think=True, analyze=True), StocksTools(), DuckDuckGoTools()],
-        show_tool_calls=True,
+        tools=[*STOCK_TOOLS, DuckDuckGoTools()],
         storage=storage,
         memory=memory,
         enable_agentic_memory=True,

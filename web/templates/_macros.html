@@ -68,3 +68,81 @@
   {{ sentiment }}
 </span>
 {% endmacro %}
+
+
+{% macro user_message(content='') %}
+<div class="mb-6 flex justify-end animate-fade-up">
+  <div class="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-neutral-900 px-4 py-2.5
+              text-[13px] leading-relaxed text-white" data-user-text>{{ content }}</div>
+</div>
+{% endmacro %}
+
+
+{% macro assistant_message(name, live=false) %}
+<div class="mb-8 animate-fade-up" data-assistant>
+  <div class="mb-2 flex items-center gap-2">
+    <span class="h-1.5 w-1.5 rounded-full bg-neutral-900 {% if live %}animate-blink{% endif %}"></span>
+    <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-400">{{ name }}</span>
+  </div>
+  <div data-parts>{{ caller() }}</div>
+  {% if live %}
+  <div class="flex gap-1 py-1" data-dots>
+    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300"></span>
+    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300 [animation-delay:200ms]"></span>
+    <span class="h-1.5 w-1.5 animate-blink rounded-full bg-neutral-300 [animation-delay:400ms]"></span>
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+
+{# The status icon and the colors follow data-status, so the browser updates one attribute only. #}
+{% macro tool_call(part) %}
+<details class="group/tool mb-3 rounded-lg border border-neutral-200 text-[12px] transition-colors
+                data-[status=error]:border-red-200 open:bg-neutral-50/60"
+         data-tool="{{ part.id }}" data-status="{{ part.status }}">
+  <summary class="flex cursor-pointer list-none items-center gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+    <span class="flex h-4 w-4 shrink-0 items-center justify-center">
+      <svg class="hidden h-3.5 w-3.5 animate-spin text-neutral-400 group-data-[status=running]/tool:block"
+           fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" class="opacity-25"></circle>
+        <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+      </svg>
+      <svg class="hidden h-3.5 w-3.5 text-neutral-900 group-data-[status=done]/tool:block"
+           fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"></path>
+      </svg>
+      <svg class="hidden h-3.5 w-3.5 text-red-600 group-data-[status=error]/tool:block"
+           fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18"></path>
+      </svg>
+      <span class="hidden h-2 w-2 rounded-[2px] bg-neutral-300 group-data-[status=stopped]/tool:block"></span>
+    </span>
+    <span class="shrink-0 font-medium" data-tool-label>{{ part.label }}</span>
+    <span class="min-w-0 flex-1 truncate text-neutral-400" data-tool-summary>{{ part.summary }}</span>
+    <span class="shrink-0 text-[11px] text-neutral-400">
+      <span class="hidden group-data-[status=running]/tool:inline">executando</span>
+      <span class="hidden text-red-600 group-data-[status=error]/tool:inline">erro</span>
+      <span class="hidden group-data-[status=stopped]/tool:inline">interrompido</span>
+    </span>
+    <svg class="h-3 w-3 shrink-0 text-neutral-400 transition-transform duration-150 group-open/tool:rotate-180"
+         fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path>
+    </svg>
+  </summary>
+  <div class="space-y-2 border-t border-neutral-200 px-3 py-2.5">
+    <div>
+      <p class="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">
+        Função <span class="normal-case tracking-normal text-neutral-600" data-tool-name>{{ part.name }}</span>
+      </p>
+      <pre class="overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-neutral-100 px-2.5 py-2
+                  text-[11px] leading-relaxed" data-tool-args>{{ part.args }}</pre>
+    </div>
+    <div class="group-data-[status=running]/tool:hidden group-data-[status=stopped]/tool:hidden">
+      <p class="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400">Resultado</p>
+      <pre class="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-neutral-100 px-2.5 py-2
+                  text-[11px] leading-relaxed" data-tool-result>{{ part.result }}</pre>
+    </div>
+  </div>
+</details>
+{% endmacro %}
