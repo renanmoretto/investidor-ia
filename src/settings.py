@@ -10,6 +10,8 @@ CACHE_DIR = PROJECT_DIR / 'cache'
 CACHE_DIR.mkdir(exist_ok=True, parents=True)
 
 DB_DIR = PROJECT_DIR / '.db'
+# the Streamlit version of the app kept its data here
+LEGACY_DB_DIR = PROJECT_DIR / 'db'
 
 MODEL_FILE = DB_DIR / 'model.json'
 API_KEYS_FILE = DB_DIR / 'api_keys.json'
@@ -18,6 +20,10 @@ API_KEYS_FILE = DB_DIR / 'api_keys.json'
 def ensure_db_dir() -> None:
     if DB_DIR.exists():
         logger.info('db dir found at %s', DB_DIR)
+        return
+    if LEGACY_DB_DIR.exists():
+        LEGACY_DB_DIR.rename(DB_DIR)
+        logger.info('db dir migrated from %s to %s', LEGACY_DB_DIR, DB_DIR)
         return
     DB_DIR.mkdir(parents=True)
     logger.info('db dir created at %s', DB_DIR)

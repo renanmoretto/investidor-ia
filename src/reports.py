@@ -53,7 +53,13 @@ def load_reports() -> list[Report]:
     content = REPORTS_FILE.read_text().strip()
     if not content:
         return []
-    return [Report(**report) for report in json.loads(content)]
+    raw = json.loads(content)
+    reports = [Report(**report) for report in raw]
+    # reports from the Streamlit version have no id; without this save they get a new id on each load
+    if any('id' not in report for report in raw):
+        save_reports(reports)
+        logger.info('report ids saved for reports without id count=%d', sum('id' not in report for report in raw))
+    return reports
 
 
 def save_reports(reports: list[Report]):

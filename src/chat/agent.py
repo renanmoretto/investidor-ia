@@ -1,4 +1,5 @@
 import logging
+from functools import cache
 from textwrap import dedent
 
 from agno.agent import Agent
@@ -14,7 +15,11 @@ from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
 
 logger = logging.getLogger(__name__)
 
-db = AsyncSqliteDb(db_file=str(DB_DIR / 'agents_db.db'))
+
+@cache
+def _db() -> AsyncSqliteDb:
+    # created on first use: AsyncSqliteDb creates the db dir, and that must not happen before settings.ensure_db_dir
+    return AsyncSqliteDb(db_file=str(DB_DIR / 'agents_db.db'))
 
 
 def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
@@ -44,7 +49,7 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             """
         ),
         tools=[*STOCK_TOOLS, DuckDuckGoTools()],
-        db=db,
+        db=_db(),
         enable_agentic_memory=True,
         update_memory_on_run=True,
         add_history_to_context=True,
