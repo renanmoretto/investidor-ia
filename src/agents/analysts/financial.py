@@ -4,27 +4,27 @@ import polars as pl
 from agno.agent import Agent
 
 from src.utils import get_model
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.utils import calc_cagr
 
 
-def analyze(ticker: str) -> str:
+async def analyze(ticker: str) -> str:
     today = datetime.date.today()
     year_start = today.year - 5
     year_end = today.year
 
-    company_name = stocks.name(ticker)
-    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
-    dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
-    dre_quarter = stocks.income_statement(ticker, year_start, year_end, 'quarter')
-    balance_sheet_quarter = stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
-    cash_flow = stocks.cash_flow(ticker, year_start, year_end)
-    stock_details = stocks.multiples(ticker)
+    company_name = await stocks.name(ticker)
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
+    dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
+    dre_quarter = await stocks.income_statement(ticker, year_start, year_end, 'quarter')
+    balance_sheet_quarter = await stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
+    cash_flow = await stocks.cash_flow(ticker, year_start, year_end)
+    stock_details = await stocks.multiples(ticker)
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
 
-    _dividends_by_year = stocks.dividends_by_year(ticker)
+    _dividends_by_year = await stocks.dividends_by_year(ticker)
     if _dividends_by_year:
         dividends_growth_by_year = (
             pl.DataFrame(_dividends_by_year)
@@ -127,11 +127,11 @@ def analyze(ticker: str) -> str:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
-        response = agent.run('Faça uma análise da empresa')
-        return response.content
+        response = await agent.arun('Faça uma análise da empresa')
+        return structured_output(response)
     except Exception as e:
         print(f'Erro ao gerar análise.: {e}')
         return BaseAgentOutput(content='Erro ao gerar análise.', sentiment='NEUTRAL', confidence=0)

@@ -3,9 +3,8 @@ from textwrap import dedent
 
 import polars as pl
 from agno.agent import Agent
-from agno.tools.reasoning import ReasoningTools
 
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.utils import calc_cagr, get_model
 
@@ -55,7 +54,7 @@ Apesar disso:
 """)
 
 
-def analyze(
+async def analyze(
     ticker: str,
     earnings_release_analysis: BaseAgentOutput,
     financial_analysis: BaseAgentOutput,
@@ -66,14 +65,14 @@ def analyze(
     year_start = today.year - 5
     year_end = today.year
 
-    company_name = stocks.name(ticker)
-    segment = stocks.details(ticker).get('segmento_de_atuacao', 'nan')
-    multiples = stocks.multiples(ticker)
-    dre_year = stocks.income_statement(ticker, year_start, year_end, 'year')
+    company_name = await stocks.name(ticker)
+    segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
+    multiples = await stocks.multiples(ticker)
+    dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
 
-    _dividends_by_year = stocks.dividends_by_year(ticker)
+    _dividends_by_year = await stocks.dividends_by_year(ticker)
     if _dividends_by_year:
         dividends_growth_by_year = (
             pl.DataFrame(_dividends_by_year)
@@ -97,7 +96,7 @@ def analyze(
     except Exception:
         dividend_yield_per_year = {}
 
-    payouts = stocks.payouts(ticker)
+    payouts = await stocks.payouts(ticker)
 
     prompt = dedent(f"""
     Dado o contexto, analise a empresa abaixo.
@@ -152,9 +151,8 @@ def analyze(
         model=get_model(),
         system_message=SYSTEM_PROMPT,
         instructions=INSTRUCTIONS,
-        tools=[ReasoningTools(think=True, analyze=True)],
-        response_model=BaseAgentOutput,
+        output_schema=BaseAgentOutput,
         retries=3,
     )
-    r = agent.run(prompt)
-    return r.content
+    r = await agent.arun(prompt)
+    return structured_output(r)

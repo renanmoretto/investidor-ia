@@ -1,7 +1,6 @@
-import requests
 from typing import Literal
 
-import pandas as pd
+import httpx
 import unidecode
 from bs4 import BeautifulSoup
 
@@ -43,17 +42,18 @@ def _fmt_value(value: str) -> float | str:
     return value_ok
 
 
-def _request(path: str, params: dict | None = None) -> requests.Response:
+async def _request(path: str, params: dict | None = None) -> httpx.Response:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     url = URL + path
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    async with httpx.AsyncClient(headers=headers, timeout=10, follow_redirects=True) as client:
+        r = await client.get(url, params=params or None)
     r.raise_for_status()
     return r
 
 
-def _request_and_parse(
+async def _request_and_parse(
     path: str,
     ticker: str,
     type_: int | None = None,
@@ -69,7 +69,7 @@ def _request_and_parse(
     if end_year is not None:
         params['range.max'] = end_year
 
-    r = _request(path, params)
+    r = await _request(path, params)
     r_json = r.json()
     grid_data = r_json['data']['grid']
 
@@ -97,7 +97,7 @@ def _request_and_parse(
     return data
 
 
-def details(ticker: str) -> dict:
+async def details(ticker: str) -> dict:
     def _find_value(soup: BeautifulSoup, tag_name: str, text: str) -> float:
         tag = soup.find(tag_name, string=text)
         if tag:
@@ -114,7 +114,7 @@ def details(ticker: str) -> dict:
             return value
         return None
 
-    r = _request(f'/acoes/{ticker}', {})
+    r = await _request(f'/acoes/{ticker}', {})
     soup = BeautifulSoup(r.text, 'html.parser')
 
     company_div = soup.find('div', class_='company-description')
@@ -148,17 +148,17 @@ def details(ticker: str) -> dict:
     }
 
 
-def income_statement(
+async def income_statement(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
     period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
     _type = 0 if period == 'annual' else 1
-    return _request_and_parse('/acao/getdre', ticker, _type, start_year, end_year)
+    return await _request_and_parse('/acao/getdre', ticker, _type, start_year, end_year)
 
 
-def cash_flow(
+async def cash_flow(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
@@ -167,30 +167,30 @@ def cash_flow(
     """só tem annual pq o statusinvest não tem cash flow por trimestre certo"""
     # _type = 0 if period == 'annual' else 1
     type_ = 0
-    return _request_and_parse('/acao/getfluxocaixa', ticker, type_, start_year, end_year)
+    return await _request_and_parse('/acao/getfluxocaixa', ticker, type_, start_year, end_year)
 
 
-def balance_sheet(
+async def balance_sheet(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
     period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
     _type = 0 if period == 'annual' else 1
-    return _request_and_parse('/acao/getativos', ticker, _type, start_year, end_year)
+    return await _request_and_parse('/acao/getativos', ticker, _type, start_year, end_year)
 
 
-def screener() -> list[dict]:
+async def screener() -> list[dict]:
     url = f'/category/advancedsearchresultpaginated?search=%7B%22Sector%22%3A%22%22%2C%22SubSector%22%3A%22%22%2C%22Segment%22%3A%22%22%2C%22my_range%22%3A%22-20%3B100%22%2C%22forecast%22%3A%7B%22upsidedownside%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22estimatesnumber%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22revisedup%22%3Atrue%2C%22reviseddown%22%3Atrue%2C%22consensus%22%3A%5B%5D%7D%2C%22dy%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_l%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22peg_ratio%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_vp%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_ativo%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22margembruta%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22margemebit%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22margemliquida%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_ebit%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22ev_ebit%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22dividaliquidaebit%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22dividaliquidapatrimonioliquido%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_sr%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_capitalgiro%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22p_ativocirculante%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22roe%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22roic%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22roa%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22liquidezcorrente%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22pl_ativo%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22passivo_ativo%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22giroativos%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22receitas_cagr5%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22lucros_cagr5%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22liquidezmediadiaria%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22vpa%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22lpa%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%2C%22valormercado%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%7D&orderColumn=&isAsc=&page=0&take=610&CategoryType=1'
-    r = _request(url)
+    r = await _request(url)
     r_json = r.json()
     return r_json['list']
 
 
-def multiples(ticker: str) -> dict:
+async def multiples(ticker: str) -> dict:
     url = f'/acao/indicatorhistoricallist?codes={ticker}&time=5&byQuarter=False&futureData=False'
 
-    r = _request(url)
+    r = await _request(url)
     r_json = r.json()
 
     data = {}
@@ -215,10 +215,10 @@ def multiples(ticker: str) -> dict:
     return transformed_data[::-1]
 
 
-def payouts(ticker: str) -> list[dict]:
+async def payouts(ticker: str) -> list[dict]:
     url = f'/acao/payoutresult?code={ticker}&type=2'
 
-    r = _request(url)
+    r = await _request(url)
     r_json = r.json()
 
     years = r_json['chart']['category']
@@ -227,10 +227,10 @@ def payouts(ticker: str) -> list[dict]:
     return [{'year': year, 'dividends': round(v / 100, 4)} for year, v in zip(years, payout_values) if v != 0]
 
 
-def dividends(ticker: str) -> list[dict]:
+async def dividends(ticker: str) -> list[dict]:
     url = f'/acao/companytickerprovents?ticker={ticker}&chartProventsType=2'
 
-    r = _request(url)
+    r = await _request(url)
     r_json = r.json()
 
     return [

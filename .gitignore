@@ -33,6 +33,7 @@ _*.ipynb
 
 # pastas vazias
 db/
+.db/
 tmp/
 cache/
 

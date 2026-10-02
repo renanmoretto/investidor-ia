@@ -1,0 +1,42 @@
+{% from "_macros.html" import user_message, assistant_message, tool_call %}
+{% set name = INVESTORS[chat.investor] %}
+
+{% if not chat.messages %}
+<div class="flex h-full flex-col items-center justify-center text-center animate-fade-up" data-empty>
+  <h2 class="text-lg font-semibold tracking-tight">{{ name }}</h2>
+  <p class="mt-1.5 max-w-sm text-[13px] leading-relaxed text-neutral-400">
+    Pergunte sobre uma ação, um balanço ou uma tese de investimento.
+  </p>
+</div>
+{% endif %}
+
+{% for message in chat.messages %}
+{% if message.role == 'user' %}
+{{ user_message(message.content) }}
+{% else %}
+{% call assistant_message(name) %}
+  {% for part in message.parts %}
+  {% if part.type == 'text' %}
+  <div class="mb-3 overflow-x-auto">
+    <div class="prose prose-sm prose-neutral max-w-none prose-headings:font-semibold prose-headings:tracking-tight
+                prose-p:leading-relaxed prose-table:text-[12px] prose-th:border prose-th:border-neutral-200
+                prose-th:bg-neutral-50 prose-th:px-2 prose-th:py-1 prose-td:border prose-td:border-neutral-200
+                prose-td:px-2 prose-td:py-1">{{ part.content | markdown | safe }}</div>
+  </div>
+  {% elif part.type == 'tool' %}
+  {{ tool_call(part) }}
+  {% elif part.type == 'chart' %}
+  <figure class="mb-3" data-chart='{{ part.spec | tojson }}'></figure>
+  {% endif %}
+  {% endfor %}
+
+  {% if message.status == 'stopped' %}
+  <p class="text-[11px] text-neutral-400">Resposta interrompida.</p>
+  {% elif message.status == 'error' %}
+  <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+    Erro ao gerar a resposta: {{ message.error }}
+  </p>
+  {% endif %}
+{% endcall %}
+{% endif %}
+{% endfor %}

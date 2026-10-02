@@ -1,20 +1,22 @@
-import requests
+import asyncio
 import io
+
+import httpx
 
 from pypdf import PdfReader
 from agno.agent import Agent
 
-from src.agents.base import BaseAgentOutput
+from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
 from src.data._sources import fundamentus
 from src.utils import get_model
 
 
-def _get_earnings_release_url(ticker: str) -> str:
-    results_trimestrais = fundamentus.resultados_trimestrais(ticker)
+async def _get_earnings_release_url(ticker: str) -> str:
+    results_trimestrais = await fundamentus.resultados_trimestrais(ticker)
     download_link = results_trimestrais[0]['download_link']
     if download_link is None:
-        download_link = fundamentus.apresentacoes(ticker)[0]['download_link']
+        download_link = (await fundamentus.apresentacoes(ticker))[0]['download_link']
 
     if download_link is None:
         raise ValueError('Não foi possível encontrar o earnings release')
@@ -22,20 +24,23 @@ def _get_earnings_release_url(ticker: str) -> str:
     return download_link
 
 
-def _get_earnings_release_text(ticker: str) -> str:
-    release_url = _get_earnings_release_url(ticker)
-    content = requests.get(release_url).content
+def _pdf_text(content: bytes) -> str:
     reader = PdfReader(io.BytesIO(content))
-    full_text = ''
-    for page in reader.pages:
-        full_text += page.extract_text()
-    return full_text
+    return ''.join(page.extract_text() for page in reader.pages)
 
 
-def analyze(ticker: str) -> BaseAgentOutput:
-    company_name = stocks.name(ticker)
+async def _get_earnings_release_text(ticker: str) -> str:
+    release_url = await _get_earnings_release_url(ticker)
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        response = await client.get(release_url)
+    # PDF parsing is CPU work, so it runs outside the event loop
+    return await asyncio.to_thread(_pdf_text, response.content)
+
+
+async def analyze(ticker: str) -> BaseAgentOutput:
+    company_name = await stocks.name(ticker)
     try:
-        earnings_release_text = _get_earnings_release_text(ticker)
+        earnings_release_text = await _get_earnings_release_text(ticker)
     except Exception as e:
         print(f'Erro ao baixar o earnings release: {e}')
         return BaseAgentOutput(content='Erro ao baixar o earnings release', sentiment='NEUTRAL', confidence=0)
@@ -96,13 +101,13 @@ def analyze(ticker: str) -> BaseAgentOutput:
         agent = Agent(
             system_message=prompt,
             model=get_model(temperature=0.3),
-            response_model=BaseAgentOutput,
+            output_schema=BaseAgentOutput,
             retries=3,
         )
-        response = agent.run(
+        response = await agent.arun(
             f'Analise o earnings release da empresa {company_name} - {ticker}:\n\n{earnings_release_text}'
         )
-        return response.content
+        return structured_output(response)
     except Exception as e:
         print(f'Erro ao analisar o earnings release: {e}')
         return BaseAgentOutput(content='Erro ao analisar o earnings release', sentiment='NEUTRAL', confidence=0)

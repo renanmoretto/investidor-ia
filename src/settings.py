@@ -1,41 +1,13 @@
-import json
-from pathlib import Path
+import logging
 
+from src import db
 
-def get_llm_config() -> dict[str, str] | None:
-    try:
-        # provider
-        with open(DB_DIR / 'model.json', 'r') as f:
-            model = json.load(f)
+logger = logging.getLogger(__name__)
 
-        # api key
-        with open(DB_DIR / 'api_keys.json', 'r') as f:
-            api_keys = json.load(f)
+PROVIDERS = ['OPENAI', 'OPENROUTER', 'GEMINI', 'ANTHROPIC']
+DEFAULT_PROVIDER = 'OPENAI'
+DEFAULT_MODEL = ''
 
-        return {
-            'provider': model['provider'],
-            'model': model['model'],
-            'api_key': api_keys.get(model['provider']),
-        }
-    except FileNotFoundError:
-        return None
-
-
-PROJECT_DIR = Path(__file__).parent.parent
-
-CACHE_DIR = PROJECT_DIR / 'cache'
-CACHE_DIR.mkdir(exist_ok=True, parents=True)
-
-DB_DIR = PROJECT_DIR / 'db'
-DB_DIR.mkdir(exist_ok=True, parents=True)
-
-# LLMs
-llm_config = get_llm_config()
-PROVIDER = llm_config['provider']
-MODEL = llm_config['model']
-API_KEY = llm_config['api_key']
-
-# investors
 INVESTORS = {
     'buffett': 'Warren Buffett',
     'graham': 'Benjamin Graham',
@@ -43,9 +15,32 @@ INVESTORS = {
 }
 
 
-def reload_llm_config():
-    global PROVIDER, MODEL, API_KEY
-    llm_config = get_llm_config()
-    PROVIDER = llm_config['provider']
-    MODEL = llm_config['model']
-    API_KEY = llm_config['api_key']
+def get_api_keys() -> dict[str, str]:
+    keys = db.get_api_keys()
+    return {provider: keys.get(provider) or '' for provider in PROVIDERS}
+
+
+def save_api_key(provider: str, api_key: str):
+    db.set_api_key(provider, api_key)
+    logger.info('api key saved for provider=%s', provider)
+
+
+def save_model(provider: str, model: str):
+    db.set_setting('provider', provider)
+    db.set_setting('model', model)
+    logger.info('model saved: provider=%s model=%s', provider, model)
+
+
+def get_llm_config() -> dict[str, str]:
+    """Reads config from the database on every call, so changes take effect without a restart."""
+    provider = db.get_setting('provider') or DEFAULT_PROVIDER
+    return {
+        'provider': provider,
+        'model': db.get_setting('model') or DEFAULT_MODEL,
+        'api_key': get_api_keys().get(provider, ''),
+    }
+
+
+def is_configured() -> bool:
+    config = get_llm_config()
+    return bool(config['provider'] and config['model'] and config['api_key'])

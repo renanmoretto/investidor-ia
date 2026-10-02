@@ -1,0 +1,154 @@
+import asyncio
+import json
+import logging
+from collections.abc import AsyncIterator, Callable
+
+from agno.run.agent import RunEvent
+from pydantic import ValidationError
+
+from src.chat.charts import build_chart_spec
+from web.chat_sessions import Chat, Run
+
+logger = logging.getLogger(__name__)
+
+CHART_TOOL = 'criar_grafico'
+RESULT_PREVIEW_CHARS = 1500
+
+TOOL_LABELS = {
+    'detalhes': 'Detalhes da ação',
+    'multiplos': 'Múltiplos',
+    'dados_financeiros': 'Dados financeiros',
+    'dividendos': 'Dividendos',
+    'criar_grafico': 'Gráfico',
+    'web_search': 'Busca na web',
+    'search_news': 'Busca de notícias',
+}
+
+
+def _append_text(message: dict, delta: str):
+    parts = message['parts']
+    if parts and parts[-1]['type'] == 'text':
+        parts[-1]['content'] += delta
+    else:
+        parts.append({'type': 'text', 'content': delta})
+
+
+def _args_summary(args: dict) -> str:
+    values = [str(v) for v in args.values() if isinstance(v, str | int | float) and not isinstance(v, bool)]
+    return ' · '.join(values)[:80]
+
+
+def _tool_part(tool) -> dict:
+    name = tool.tool_name or ''
+    args = tool.tool_args or {}
+    return {
+        'type': 'tool',
+        'id': tool.tool_call_id or '',
+        'name': name,
+        'label': TOOL_LABELS.get(name, name),
+        'summary': _args_summary(args),
+        'args': json.dumps(args, ensure_ascii=False, indent=2),
+        'status': 'running',
+        'result': '',
+    }
+
+
+def _chart_part(tool) -> dict | None:
+    try:
+        return {'type': 'chart', 'spec': build_chart_spec(**(tool.tool_args or {}))}
+    except (ValidationError, TypeError) as e:
+        logger.warning('chart spec invalid tool_call_id=%s error=%s', tool.tool_call_id, e)
+        return None
+
+
+def start_answer(chat: Chat, text: str, run_agent: Callable[[str], AsyncIterator]) -> Run:
+    """Starts the answer as a background task. The assistant message is stored in the chat
+    at once and updated in place, so the page can show the partial answer at any time."""
+    message = {'role': 'assistant', 'parts': [], 'status': 'streaming'}
+    user_message = {'role': 'user', 'content': text}
+    chat.messages.append(user_message)
+    chat.save_message(user_message)
+    # the answer is saved when it ends; it changes on each event until then
+    chat.messages.append(message)
+    run = Run()
+    chat.run = run
+    run.task = asyncio.create_task(_answer(chat, run, message, text, run_agent))
+    return run
+
+
+async def follow_lines(run: Run) -> AsyncIterator[str]:
+    async for event in run.follow():
+        yield json.dumps(event, ensure_ascii=False) + '\n'
+
+
+async def _answer(chat: Chat, run: Run, message: dict, text: str, run_agent: Callable[[str], AsyncIterator]):
+    tools: dict[str, dict] = {}
+    try:
+        async for chunk in run_agent(text):
+            event = getattr(chunk, 'event', '')
+
+            if event == RunEvent.run_content.value:
+                delta = chunk.content
+                if isinstance(delta, str) and delta:
+                    _append_text(message, delta)
+                    run.publish({'type': 'text', 'delta': delta})
+
+            elif event == RunEvent.tool_call_started.value:
+                tool = chunk.tool
+                if not tool or tool.tool_call_id in tools:
+                    continue
+                part = _tool_part(tool)
+                tools[tool.tool_call_id] = part
+                message['parts'].append(part)
+                logger.info('tool call started name=%s args=%s', part['name'], part['args'])
+                run.publish(dict(part))
+
+            elif event in (RunEvent.tool_call_completed.value, RunEvent.tool_call_error.value):
+                tool = chunk.tool
+                part = tools.get(tool.tool_call_id) if tool else None
+                if not part or part['status'] != 'running':
+                    continue
+                failed = event == RunEvent.tool_call_error.value or tool.tool_call_error
+                result = tool.result if tool.result is not None else getattr(chunk, 'error', None)
+                part['result'] = str(result or '')[:RESULT_PREVIEW_CHARS]
+                part['status'] = 'error' if failed else 'done'
+
+                chart = None
+                if part['name'] == CHART_TOOL and part['status'] == 'done':
+                    chart = _chart_part(tool)
+                    if not chart:
+                        part['status'] = 'error'
+
+                logger.info('tool call completed name=%s status=%s', part['name'], part['status'])
+                run.publish({**part, 'type': 'tool_done'})
+                if chart:
+                    message['parts'].append(chart)
+                    run.publish(chart)
+
+            elif event == RunEvent.run_error.value:
+                raise RuntimeError(str(chunk.content))
+
+        message['status'] = 'done'
+    except asyncio.CancelledError:
+        message['status'] = 'stopped'
+    except Exception as e:
+        logger.exception('chat failed investor=%s', chat.investor)
+        message['status'] = 'error'
+        message['error'] = str(e)
+        run.publish({'type': 'error', 'message': str(e)})
+    finally:
+        for part in tools.values():
+            if part['status'] == 'running':
+                part['status'] = 'stopped'
+        try:
+            chat.save_message(message)
+        except Exception:
+            # the answer stays in memory; the run must end so the browser does not wait forever
+            logger.exception('chat answer not saved investor=%s', chat.investor)
+        run.finish()
+        logger.info(
+            'chat answer finished investor=%s status=%s parts=%d',
+            chat.investor,
+            message['status'],
+            len(message['parts']),
+        )

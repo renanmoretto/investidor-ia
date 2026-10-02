@@ -1,5 +1,6 @@
-import requests
 import datetime
+
+import httpx
 
 from bs4 import BeautifulSoup
 
@@ -7,19 +8,20 @@ from bs4 import BeautifulSoup
 URL = 'https://fundamentus.com.br'
 
 
-def _request(url: str) -> requests.Response:
+async def _request(url: str) -> httpx.Response:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    response = requests.get(url, headers=headers, timeout=30)
+    async with httpx.AsyncClient(headers=headers, timeout=30, follow_redirects=True) as client:
+        response = await client.get(url)
     response.raise_for_status()
 
     return response
 
 
-def detalhes(ticker: str) -> dict:
-    response = _request(f'{URL}/detalhes.php?papel={ticker}')
+async def detalhes(ticker: str) -> dict:
+    response = await _request(f'{URL}/detalhes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
     labels = [label.find('span', class_='txt').text for label in soup.find_all('td', class_='label')]
@@ -52,8 +54,8 @@ def detalhes(ticker: str) -> dict:
     return data
 
 
-def proventos(ticker: str) -> list[dict]:
-    response = _request(f'{URL}/proventos.php?papel={ticker}')
+async def proventos(ticker: str) -> list[dict]:
+    response = await _request(f'{URL}/proventos.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
@@ -85,8 +87,8 @@ def proventos(ticker: str) -> list[dict]:
     return data
 
 
-def resultados_trimestrais(ticker: str) -> list[dict]:
-    response = _request(f'{URL}/resultados_trimestrais.php?papel={ticker}')
+async def resultados_trimestrais(ticker: str) -> list[dict]:
+    response = await _request(f'{URL}/resultados_trimestrais.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')
@@ -114,8 +116,8 @@ def resultados_trimestrais(ticker: str) -> list[dict]:
     return data
 
 
-def apresentacoes(ticker: str) -> list[dict]:
-    response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
+async def apresentacoes(ticker: str) -> list[dict]:
+    response = await _request(f'{URL}/apresentacoes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
     tables = soup.find_all('table')

@@ -1,10 +1,10 @@
 import json
 import base64
 
-import requests
+import httpx
 
 
-def get_company_data(ticker: str) -> dict:
+async def get_company_data(ticker: str) -> dict:
     """Acha dados da companhia no site da B3, como nome, código CVM, etc."""
     url = 'https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetInitialCompanies/'
     data = {
@@ -15,7 +15,8 @@ def get_company_data(ticker: str) -> dict:
     }
     data_b64_string = base64.b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
 
-    r = requests.get(url + data_b64_string)
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        r = await client.get(url + data_b64_string)
     r.raise_for_status()
     r_json = r.json()
 
