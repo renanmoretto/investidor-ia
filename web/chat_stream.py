@@ -65,7 +65,10 @@ def start_answer(chat: Chat, text: str, run_agent: Callable[[str], AsyncIterator
     """Starts the answer as a background task. The assistant message is stored in the chat
     at once and updated in place, so the page can show the partial answer at any time."""
     message = {'role': 'assistant', 'parts': [], 'status': 'streaming'}
-    chat.messages.append({'role': 'user', 'content': text})
+    user_message = {'role': 'user', 'content': text}
+    chat.messages.append(user_message)
+    chat.save_message(user_message)
+    # the answer is saved when it ends; it changes on each event until then
     chat.messages.append(message)
     run = Run()
     chat.run = run
@@ -137,6 +140,11 @@ async def _answer(chat: Chat, run: Run, message: dict, text: str, run_agent: Cal
         for part in tools.values():
             if part['status'] == 'running':
                 part['status'] = 'stopped'
+        try:
+            chat.save_message(message)
+        except Exception:
+            # the answer stays in memory; the run must end so the browser does not wait forever
+            logger.exception('chat answer not saved investor=%s', chat.investor)
         run.finish()
         logger.info(
             'chat answer finished investor=%s status=%s parts=%d',

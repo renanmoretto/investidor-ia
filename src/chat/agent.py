@@ -6,9 +6,9 @@ from agno.agent import Agent
 from agno.db.sqlite import AsyncSqliteDb
 from agno.tools.duckduckgo import DuckDuckGoTools
 
+from src import db
 from src.utils import get_model
 from src.chat.tools import STOCK_TOOLS
-from src.settings import DB_DIR
 from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
 from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
 from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 
 @cache
 def _db() -> AsyncSqliteDb:
-    # created on first use: AsyncSqliteDb creates the db dir, and that must not happen before settings.ensure_db_dir
-    return AsyncSqliteDb(db_file=str(DB_DIR / 'agents_db.db'))
+    # agno keeps the chat history and memory in its own tables, in the same file as the rest of the app data
+    db.init()
+    return AsyncSqliteDb(db_file=str(db.db_file()))
 
 
 def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:

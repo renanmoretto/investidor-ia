@@ -1,6 +1,4 @@
-import asyncio
 import datetime
-import json
 import logging
 import uuid
 
@@ -8,13 +6,11 @@ from pydantic import BaseModel, Field
 
 from src.agents.analysts import earnings_release, financial, news, valuation
 from src.agents.investors import barsi, buffett, graham
+from src import db
 from src.data import stocks
-from src.settings import DB_DIR, INVESTORS
+from src.settings import INVESTORS
 
 logger = logging.getLogger(__name__)
-
-REPORTS_FILE = DB_DIR / 'reports.json'
-_lock = asyncio.Lock()
 
 _INVESTOR_MODULES = {
     'buffett': buffett,
@@ -48,44 +44,24 @@ class Report(BaseModel):
 
 
 def load_reports() -> list[Report]:
-    if not REPORTS_FILE.exists():
-        return []
-    content = REPORTS_FILE.read_text().strip()
-    if not content:
-        return []
-    raw = json.loads(content)
-    reports = [Report(**report) for report in raw]
-    # reports from the Streamlit version have no id; without this save they get a new id on each load
-    if any('id' not in report for report in raw):
-        save_reports(reports)
-        logger.info('report ids saved for reports without id count=%d', sum('id' not in report for report in raw))
-    return reports
-
-
-def save_reports(reports: list[Report]):
-    REPORTS_FILE.write_text(json.dumps([json.loads(r.model_dump_json()) for r in reports], indent=4))
+    """All reports, newest first."""
+    return [Report(**report) for report in db.list_reports()]
 
 
 def get_report(report_id: str) -> Report | None:
-    return next((r for r in load_reports() if r.id == report_id), None)
+    report = db.get_report(report_id)
+    return Report(**report) if report else None
 
 
 async def add_report(report: Report):
-    async with _lock:
-        reports = load_reports()
-        reports.append(report)
-        save_reports(reports)
+    db.insert_report(report.model_dump(mode='json'))
     logger.info('report saved id=%s ticker=%s', report.id, report.ticker)
 
 
 async def delete_report(report_id: str) -> bool:
-    async with _lock:
-        reports = load_reports()
-        remaining = [r for r in reports if r.id != report_id]
-        if len(remaining) == len(reports):
-            logger.warning('report not found for deletion id=%s', report_id)
-            return False
-        save_reports(remaining)
+    if not db.delete_report(report_id):
+        logger.warning('report not found for deletion id=%s', report_id)
+        return False
     logger.info('report deleted id=%s', report_id)
     return True
 

@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src import settings
+from src import db, settings
 from src.chat.agent import get_chat_agent
 from src.reports import delete_report, get_report, load_reports
 from web import chat_sessions, jobs
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent
 
-app = FastAPI(title='Investidor-IA', on_startup=[settings.ensure_db_dir])
+app = FastAPI(title='Investidor-IA', on_startup=[db.init])
 app.mount('/static', StaticFiles(directory=WEB_DIR / 'static'), name='static')
 
 templates = Jinja2Templates(directory=str(WEB_DIR / 'templates'))
@@ -57,7 +57,9 @@ def _chat_session(request: Request) -> chat_sessions.ChatSession:
 
 
 def _with_cookie(response, session: chat_sessions.ChatSession):
-    response.set_cookie(chat_sessions.COOKIE_NAME, session.id, httponly=True, samesite='lax')
+    response.set_cookie(
+        chat_sessions.COOKIE_NAME, session.id, max_age=chat_sessions.COOKIE_MAX_AGE, httponly=True, samesite='lax'
+    )
     return response
 
 
@@ -83,8 +85,7 @@ async def chat_index(request: Request):
 async def chat_page(request: Request, investor: str):
     _check_investor(investor)
     session = _chat_session(request)
-    session.last_investor = investor
-    return _with_cookie(render(request, 'chat.html', session=session, chat=session.chat(investor)), session)
+    return _with_cookie(render(request, 'chat.html', session=session, chat=session.open(investor)), session)
 
 
 @app.post('/chat/{investor}/new')
@@ -177,8 +178,7 @@ async def job_status(job_id: str):
 
 @app.get('/reports', response_class=HTMLResponse)
 async def reports_page(request: Request):
-    reports = sorted(load_reports(), key=lambda r: r.generated_at, reverse=True)
-    return render(request, 'reports.html', reports=reports)
+    return render(request, 'reports.html', reports=load_reports())
 
 
 @app.get('/reports/{report_id}', response_class=HTMLResponse)
