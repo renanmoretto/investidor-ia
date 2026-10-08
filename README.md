@@ -20,7 +20,7 @@ Cada investidor tem o seu próprio chat. O investidor tem acesso à internet e a
 O processo segue o seguinte fluxo:
 
 1. O usuário fornece o código de uma ação brasileira (exemplo: `PETR4`, `VALE3`, `ITUB4`)
-2. O usuário seleciona um investidor renomado (Warren Buffett, Benjamin Graham ou Luiz Barsi)
+2. O usuário seleciona um investidor renomado (Warren Buffett, Benjamin Graham, Luiz Barsi ou Peter Lynch)
 3. O sistema coleta automaticamente dados e notícias relevantes sobre a ação
 4. Analistas especializados processam diferentes aspectos: resultados financeiros, valuation, notícias e releases
 5. O investidor selecionado analisa todos os dados e relatórios dos analistas

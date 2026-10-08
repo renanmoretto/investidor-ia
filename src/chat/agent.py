@@ -9,9 +9,7 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 from src import db
 from src.utils import get_model
 from src.chat.tools import MATH_TOOLS, STOCK_TOOLS
-from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
-from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
-from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
+from src.agents.investors import INVESTOR_MODULES
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +22,9 @@ def _db() -> AsyncSqliteDb:
 
 
 def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
-    match investor:
-        case 'buffett':
-            system_prompt = buffet_system_prompt
-        case 'barsi':
-            system_prompt = barsi_system_prompt
-        case 'graham':
-            system_prompt = graham_system_prompt
-        case _:
-            raise ValueError(f'Investor {investor} not found')
+    if investor not in INVESTOR_MODULES:
+        raise ValueError(f'Investor {investor} not found')
+    system_prompt = INVESTOR_MODULES[investor].SYSTEM_PROMPT
 
     logger.info('chat agent created investor=%s session_id=%s', investor, session_id)
 
