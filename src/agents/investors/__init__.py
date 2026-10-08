@@ -1,8 +1,9 @@
-from src.agents.investors import barsi, buffett, graham, lynch
+from src.agents.investors import barsi, buffett, graham, greenblatt, lynch
 
 INVESTOR_MODULES = {
     'buffett': buffett,
     'graham': graham,
     'barsi': barsi,
     'lynch': lynch,
+    'greenblatt': greenblatt,
 }

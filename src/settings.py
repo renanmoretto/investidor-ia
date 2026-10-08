@@ -13,6 +13,7 @@ INVESTORS = {
     'graham': 'Benjamin Graham',
     'barsi': 'Luiz Barsi',
     'lynch': 'Peter Lynch',
+    'greenblatt': 'Joel Greenblatt',
 }
 
 
