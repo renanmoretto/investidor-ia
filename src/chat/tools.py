@@ -269,23 +269,6 @@ def numero_de_graham(lpa: float, vpa: float, preco: float | None = None) -> str:
     return json.dumps({'numero_de_graham': value, 'margem_de_seguranca': margin})
 
 
-def preco_teto_bazin(dividendos_por_acao: list[float], yield_minimo: float = formulas.BAZIN_MIN_YIELD) -> str:
-    """
-    Calcula o preço teto de Décio Bazin: a média dos dividendos anuais por ação dividida pelo yield mínimo exigido.
-    Acima desse preço a ação não entrega o yield mínimo. Os dividendos anuais vêm da função dividendos com agrupar_por_ano.
-
-    Args:
-        dividendos_por_acao (list[float]): Dividendos por ação de cada ano considerado. Exemplo: [1.2, 1.0, 0.8].
-        yield_minimo (float): Yield mínimo exigido, em decimal. Default é 0.06 (6%).
-
-    Returns:
-        str: um JSON com 'preco_teto', que é null quando não há dividendos ou o yield é inválido.
-    """
-    value = formulas.bazin_ceiling_price(dividendos_por_acao, yield_minimo)
-    logger.info('bazin ceiling price dividends=%s min_yield=%s result=%s', dividendos_por_acao, yield_minimo, value)
-    return json.dumps({'preco_teto': value})
-
-
 def peg_ratio(p_l: float, crescimento_lucro_pct: float) -> str:
     """
     Calcula o PEG ratio de Peter Lynch: P/L dividido pelo crescimento anual do lucro em %.
@@ -320,4 +303,4 @@ def earnings_yield(ebit: float, valor_de_firma: float) -> str:
     return json.dumps({'earnings_yield': value})
 
 
-MATH_TOOLS = [calcular, numero_de_graham, preco_teto_bazin, peg_ratio, earnings_yield]
+MATH_TOOLS = [calcular, numero_de_graham, peg_ratio, earnings_yield]

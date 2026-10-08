@@ -39,7 +39,7 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             Você tem acesso livre aos dados das ações no Brasil e ao uso das funções disponíveis, se aproveite delas para responder ao usuário.
             Caso você use alguma função disponível, não informe ao usuário que você usou uma função, apenas responda a pergunta.
             Quando uma evolução no tempo ou uma comparação ficar mais clara de forma visual, use a função criar_grafico.
-            Nunca faça contas de cabeça: use a função calcular, ou as funções numero_de_graham, preco_teto_bazin, peg_ratio e earnings_yield quando a conta for uma dessas fórmulas.
+            Nunca faça contas de cabeça: use a função calcular, ou as funções numero_de_graham, peg_ratio e earnings_yield quando a conta for uma dessas fórmulas.
             """
         ),
         tools=[*STOCK_TOOLS, *MATH_TOOLS, DuckDuckGoTools()],
