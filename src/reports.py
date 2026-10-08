@@ -5,18 +5,12 @@ import uuid
 from pydantic import BaseModel, Field
 
 from src.agents.analysts import earnings_release, financial, news, valuation
-from src.agents.investors import barsi, buffett, graham
+from src.agents.investors import INVESTOR_MODULES
 from src import db
 from src.data import stocks
 from src.settings import INVESTORS
 
 logger = logging.getLogger(__name__)
-
-_INVESTOR_MODULES = {
-    'buffett': buffett,
-    'graham': graham,
-    'barsi': barsi,
-}
 
 STEPS = [
     ('earnings_release', 'Analisando earnings release...'),
@@ -71,7 +65,7 @@ async def generate_report(ticker: str, investor_name: str, on_step=None) -> Repo
 
     on_step is called with each step key before it runs, so the caller can report progress.
     """
-    if investor_name not in _INVESTOR_MODULES:
+    if investor_name not in INVESTOR_MODULES:
         raise ValueError(f'Investidor {investor_name} não encontrado')
 
     ticker = ticker.upper().strip()
@@ -97,7 +91,7 @@ async def generate_report(ticker: str, investor_name: str, on_step=None) -> Repo
     news_analysis = await news.analyze(ticker=ticker)
 
     step('investor')
-    investor_analysis = await _INVESTOR_MODULES[investor_name].analyze(
+    investor_analysis = await INVESTOR_MODULES[investor_name].analyze(
         ticker=ticker,
         earnings_release_analysis=earnings_release_analysis,
         financial_analysis=financial_analysis,
