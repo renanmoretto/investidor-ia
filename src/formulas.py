@@ -4,7 +4,6 @@ import math
 logger = logging.getLogger(__name__)
 
 GRAHAM_MULTIPLIER = 22.5  # P/L máximo de 15 x P/VP máximo de 1,5
-BAZIN_MIN_YIELD = 0.06
 
 
 def _positive(*values) -> bool:
@@ -35,12 +34,6 @@ def margin_of_safety(intrinsic_value: float | None, price: float) -> float | Non
     if not _positive(intrinsic_value, price):
         return None
     return 1 - price / intrinsic_value
-
-
-def bazin_ceiling_price(dividends_per_share: list[float], min_yield: float = BAZIN_MIN_YIELD) -> float | None:
-    if not dividends_per_share or not _positive(min_yield):
-        return None
-    return sum(dividends_per_share) / len(dividends_per_share) / min_yield
 
 
 def peg_ratio(p_l: float, earnings_growth_pct: float) -> float | None:
