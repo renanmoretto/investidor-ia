@@ -102,7 +102,8 @@ async def analyze(
     segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
     multiples = await stocks.multiples(ticker)
     lastest_multiples = multiples[0]
-    dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
+    # 2 anos a mais: o CAGR de 5 anos precisa de 6 anos fechados, e o ano mais recente pode ainda não ter sido divulgado
+    dre_year = await stocks.income_statement(ticker, year_start - 2, year_end, 'annual')
     cagr_5y_receita_liq = calc_cagr(dre_year, 'receita_liquida', 5)
     cagr_5y_lucro_liq = calc_cagr(dre_year, 'lucro_liquido', 5)
 
@@ -135,7 +136,7 @@ async def analyze(
         'divida_menor_que_patrimonio_liquido': stock_details.get('divida_liquida', float('nan'))
         < stock_details.get('patrimonio_liquido', float('nan')),
         'crescimento_dividendos_anuais': dividends_growth_by_year,
-        'lucro_liquido_positivo_nos_ultimos_5_anos': all([d['lucro_liquido'] > 0 for d in dre_year]),
+        'lucro_liquido_positivo_nos_ultimos_5_anos': all([d['lucro_liquido'] > 0 for d in dre_year[:6]]),
         'cagr_5y_receita_liq': cagr_5y_receita_liq,
         'cagr_5y_lucro_liq': cagr_5y_lucro_liq,
         'ativo_circulante_sobre_passivo_circulante': pl.DataFrame(balance_sheet_quarter)

@@ -16,7 +16,8 @@ async def analyze(ticker: str) -> str:
 
     company_name = await stocks.name(ticker)
     segment = (await stocks.details(ticker)).get('segmento_de_atuacao', 'nan')
-    dre_year = await stocks.income_statement(ticker, year_start, year_end, 'year')
+    # 2 anos a mais: o CAGR de 5 anos precisa de 6 anos fechados, e o ano mais recente pode ainda não ter sido divulgado
+    dre_year = await stocks.income_statement(ticker, year_start - 2, year_end, 'annual')
     dre_quarter = await stocks.income_statement(ticker, year_start, year_end, 'quarter')
     balance_sheet_quarter = await stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
     cash_flow = await stocks.cash_flow(ticker, year_start, year_end)

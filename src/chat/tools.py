@@ -146,6 +146,9 @@ async def dados_financeiros(
             ...
         ]
     """
+    if period not in ('quarter', 'annual'):
+        logger.warning('financial data rejected ticker=%s period=%s', ticker, period)
+        return "Erro: period deve ser 'quarter' ou 'annual'."
     if document == 'resultados':
         data = await stocks.income_statement(ticker, period=period)
         if period == 'annual' and resultado_ltm:

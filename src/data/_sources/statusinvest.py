@@ -5,6 +5,7 @@ import unidecode
 from bs4 import BeautifulSoup
 
 URL = 'https://statusinvest.com.br'
+PERIOD_TYPES = {'annual': 0, 'quarter': 1}
 
 
 def _fmt_col_name(name: str) -> str:
@@ -148,14 +149,19 @@ async def details(ticker: str) -> dict:
     }
 
 
+def _period_type(period: str) -> int:
+    if period not in PERIOD_TYPES:
+        raise ValueError(f"period deve ser 'annual' ou 'quarter', recebido {period!r}")
+    return PERIOD_TYPES[period]
+
+
 async def income_statement(
     ticker: str,
     start_year: int | None = None,
     end_year: int | None = None,
     period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'annual' else 1
-    return await _request_and_parse('/acao/getdre', ticker, _type, start_year, end_year)
+    return await _request_and_parse('/acao/getdre', ticker, _period_type(period), start_year, end_year)
 
 
 async def cash_flow(
@@ -176,8 +182,7 @@ async def balance_sheet(
     end_year: int | None = None,
     period: Literal['quarter', 'annual'] = 'quarter',
 ) -> list[dict]:
-    _type = 0 if period == 'annual' else 1
-    return await _request_and_parse('/acao/getativos', ticker, _type, start_year, end_year)
+    return await _request_and_parse('/acao/getativos', ticker, _period_type(period), start_year, end_year)
 
 
 async def screener() -> list[dict]:
