@@ -1,4 +1,5 @@
 import datetime
+import logging
 from textwrap import dedent
 
 import polars as pl
@@ -6,7 +7,10 @@ from agno.agent import Agent
 
 from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
-from src.utils import calc_cagr, get_model
+from src.formulas import calc_cagr, graham_number, margin_of_safety
+from src.utils import get_model
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = dedent("""
@@ -38,6 +42,8 @@ Sua análise deve:
     - Ausência de prejuízos nos últimos anos
 
 2. Calcular o valor intrínseco da empresa usando métodos conservadores:
+    - Use o "numero_de_graham" (√(22,5 × LPA × VPA)) e a "margem_de_seguranca" já calculados nos critérios, não refaça essa conta
+    - Se eles vierem como None, o LPA ou o VPA é negativo e a fórmula não se aplica: diga isso na análise
     - Considere apenas lucros passados comprovados, não projeções futuras
     - Aplique múltiplos conservadores
     - Inclua uma margem de segurança substancial
@@ -125,7 +131,27 @@ async def analyze(
 
     balance_sheet_quarter = await stocks.balance_sheet(ticker, year_start, year_end, 'quarter')
 
+    price = stock_details.get('preco', float('nan'))
+    lpa = lastest_multiples.get('lpa', float('nan'))
+    vpa = lastest_multiples.get('vpa', float('nan'))
+    intrinsic_value = graham_number(lpa, vpa)
+    safety_margin = margin_of_safety(intrinsic_value, price)
+    logger.info(
+        'graham valuation ticker=%s price=%s lpa=%s vpa=%s graham_number=%s margin_of_safety=%s',
+        ticker,
+        price,
+        lpa,
+        vpa,
+        intrinsic_value,
+        safety_margin,
+    )
+
     classic_criteria = {
+        'preco_atual': price,
+        'lpa': lpa,
+        'vpa': vpa,
+        'numero_de_graham': round(intrinsic_value, 2) if intrinsic_value is not None else None,
+        'margem_de_seguranca': round(safety_margin, 4) if safety_margin is not None else None,
         'valor_de_mercado': f'{stock_details.get("valor_de_mercado", float("nan")):,.0f} BRL',
         'preco_sobre_lucro': lastest_multiples.get('p_l', float('nan')),
         'preco_sobre_lucro_abaixo_15x': lastest_multiples.get('p_l', float('nan')) < 15,

@@ -6,7 +6,7 @@ from agno.agent import Agent
 from src.utils import get_model
 from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
-from src.utils import calc_cagr
+from src.formulas import calc_cagr
 
 
 async def analyze(ticker: str) -> str:
