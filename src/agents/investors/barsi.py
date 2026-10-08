@@ -6,7 +6,8 @@ from agno.agent import Agent
 
 from src.agents.base import BaseAgentOutput, structured_output
 from src.data import stocks
-from src.utils import calc_cagr, get_model
+from src.formulas import calc_cagr
+from src.utils import get_model
 
 
 SYSTEM_PROMPT = dedent("""

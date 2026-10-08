@@ -28,20 +28,6 @@ def pdf_bytes_to_text(pdf_bytes: bytes) -> str:
     return text
 
 
-def calc_cagr(data: list[dict], name: str, years: int = 5) -> float:
-    """
-    CAGR entre anos fechados, a linha 'ltm' é ignorada.
-    ps: data precisa ser anual e estar em ordem decrescente, do mais novo para o mais antigo
-    """
-    values = [d[name] for d in data if d.get('data') != 'ltm'][: years + 1]
-    if len(values) < 2:
-        logger.warning('cagr not calculated name=%s years=%d closed_years_available=%d', name, years, len(values))
-        return float('nan')
-    if len(values) < years + 1:
-        logger.warning('cagr name=%s covers %d years instead of %d', name, len(values) - 1, years)
-    return (values[0] / values[-1]) ** (1 / (len(values) - 1)) - 1
-
-
 def get_model(temperature: float = 0.3) -> Model:
     config = get_llm_config()
     provider, model, api_key = config['provider'], config['model'], config['api_key']
