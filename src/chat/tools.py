@@ -3,6 +3,8 @@ import logging
 
 from pydantic import BaseModel, ValidationError
 
+from src import formulas
+from src.chat import calculator
 from src.chat.charts import build_chart_spec
 from src.data import stocks
 
@@ -219,3 +221,103 @@ def criar_grafico(titulo: str, tipo: str, rotulos: list[str], series: list[Serie
 
 
 STOCK_TOOLS = [detalhes, multiplos, dados_financeiros, dividendos, criar_grafico]
+
+
+def calcular(expressao: str) -> str:
+    """
+    Calcula uma expressão matemática e retorna o resultado exato.
+    Use sempre que precisar fazer uma conta, em vez de calcular de cabeça: juros compostos, CAGR, projeções,
+    variações percentuais, médias, etc.
+
+    Args:
+        expressao (str): A expressão, só com números (sem variáveis e sem o símbolo %, use 0.08 para 8%).
+            Operadores: + - * / // % e ** para potência.
+            Funções: sqrt, log (logaritmo natural), log10, exp, abs, min, max, round. Constantes: pi, e.
+            Exemplos:
+                '1000 * (1 + 0.08) ** 10' para o valor de 1000 crescendo 8% ao ano por 10 anos.
+                '(5.2 / 3.1) ** (1 / 5) - 1' para o CAGR de 3.1 para 5.2 em 5 anos.
+
+    Returns:
+        str: o resultado da expressão, ou a descrição do erro.
+    """
+    try:
+        result = calculator.evaluate(expressao)
+    except ValueError as e:
+        logger.warning('calculation rejected expression=%r reason=%s', expressao[: calculator.MAX_EXPRESSION_LENGTH], e)
+        return f'Erro ao calcular: {e}'
+    logger.info('calculation done expression=%r result=%s', expressao, result)
+    return str(result)
+
+
+def numero_de_graham(lpa: float, vpa: float, preco: float | None = None) -> str:
+    """
+    Calcula o número de Graham, o preço justo de Benjamin Graham: raiz de (22,5 x LPA x VPA).
+    O LPA e o VPA vêm da função multiplos e o preço da função detalhes.
+
+    Args:
+        lpa (float): Lucro por ação.
+        vpa (float): Valor patrimonial por ação.
+        preco (float): Preço atual da ação. Se informado, a margem de segurança também é calculada.
+
+    Returns:
+        str: um JSON com 'numero_de_graham' e 'margem_de_seguranca' (0.25 significa preço 25% abaixo do número de Graham,
+        negativo significa preço acima). Os valores são null quando o LPA ou o VPA é negativo, pois a fórmula não se aplica.
+    """
+    value = formulas.graham_number(lpa, vpa)
+    margin = formulas.margin_of_safety(value, preco) if preco is not None else None
+    logger.info('graham number lpa=%s vpa=%s price=%s result=%s margin_of_safety=%s', lpa, vpa, preco, value, margin)
+    return json.dumps({'numero_de_graham': value, 'margem_de_seguranca': margin})
+
+
+def preco_teto_bazin(dividendos_por_acao: list[float], yield_minimo: float = formulas.BAZIN_MIN_YIELD) -> str:
+    """
+    Calcula o preço teto de Décio Bazin: a média dos dividendos anuais por ação dividida pelo yield mínimo exigido.
+    Acima desse preço a ação não entrega o yield mínimo. Os dividendos anuais vêm da função dividendos com agrupar_por_ano.
+
+    Args:
+        dividendos_por_acao (list[float]): Dividendos por ação de cada ano considerado. Exemplo: [1.2, 1.0, 0.8].
+        yield_minimo (float): Yield mínimo exigido, em decimal. Default é 0.06 (6%).
+
+    Returns:
+        str: um JSON com 'preco_teto', que é null quando não há dividendos ou o yield é inválido.
+    """
+    value = formulas.bazin_ceiling_price(dividendos_por_acao, yield_minimo)
+    logger.info('bazin ceiling price dividends=%s min_yield=%s result=%s', dividendos_por_acao, yield_minimo, value)
+    return json.dumps({'preco_teto': value})
+
+
+def peg_ratio(p_l: float, crescimento_lucro_pct: float) -> str:
+    """
+    Calcula o PEG ratio de Peter Lynch: P/L dividido pelo crescimento anual do lucro em %.
+    Abaixo de 1 indica que o crescimento não está caro.
+
+    Args:
+        p_l (float): Preço sobre lucro.
+        crescimento_lucro_pct (float): Crescimento anual do lucro em %. Exemplo: 15 para 15% ao ano.
+
+    Returns:
+        str: um JSON com 'peg_ratio', que é null quando o P/L ou o crescimento é negativo, pois o indicador não se aplica.
+    """
+    value = formulas.peg_ratio(p_l, crescimento_lucro_pct)
+    logger.info('peg ratio p_l=%s growth_pct=%s result=%s', p_l, crescimento_lucro_pct, value)
+    return json.dumps({'peg_ratio': value})
+
+
+def earnings_yield(ebit: float, valor_de_firma: float) -> str:
+    """
+    Calcula o earnings yield de Joel Greenblatt: EBIT dividido pelo valor de firma (EV).
+    Quanto maior, mais barata a empresa em relação ao lucro operacional.
+
+    Args:
+        ebit (float): EBIT dos últimos 12 meses.
+        valor_de_firma (float): Valor de firma (EV), disponível na função detalhes.
+
+    Returns:
+        str: um JSON com 'earnings_yield' em decimal (0.1 significa 10%), que é null quando o valor de firma é inválido.
+    """
+    value = formulas.earnings_yield(ebit, valor_de_firma)
+    logger.info('earnings yield ebit=%s enterprise_value=%s result=%s', ebit, valor_de_firma, value)
+    return json.dumps({'earnings_yield': value})
+
+
+MATH_TOOLS = [calcular, numero_de_graham, preco_teto_bazin, peg_ratio, earnings_yield]

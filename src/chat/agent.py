@@ -8,7 +8,7 @@ from agno.tools.duckduckgo import DuckDuckGoTools
 
 from src import db
 from src.utils import get_model
-from src.chat.tools import STOCK_TOOLS
+from src.chat.tools import MATH_TOOLS, STOCK_TOOLS
 from src.agents.investors.barsi import SYSTEM_PROMPT as barsi_system_prompt
 from src.agents.investors.buffett import SYSTEM_PROMPT as buffet_system_prompt
 from src.agents.investors.graham import SYSTEM_PROMPT as graham_system_prompt
@@ -47,9 +47,10 @@ def get_chat_agent(investor: str, session_id: str | None = None) -> Agent:
             Você tem acesso livre aos dados das ações no Brasil e ao uso das funções disponíveis, se aproveite delas para responder ao usuário.
             Caso você use alguma função disponível, não informe ao usuário que você usou uma função, apenas responda a pergunta.
             Quando uma evolução no tempo ou uma comparação ficar mais clara de forma visual, use a função criar_grafico.
+            Nunca faça contas de cabeça: use a função calcular, ou as funções numero_de_graham, preco_teto_bazin, peg_ratio e earnings_yield quando a conta for uma dessas fórmulas.
             """
         ),
-        tools=[*STOCK_TOOLS, DuckDuckGoTools()],
+        tools=[*STOCK_TOOLS, *MATH_TOOLS, DuckDuckGoTools()],
         db=_db(),
         enable_agentic_memory=True,
         update_memory_on_run=True,
